@@ -1,0 +1,662 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    StatusBar,
+    ScrollView,
+    Dimensions,
+    PixelRatio,
+    Switch,
+    Animated,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../App';
+import { BottomNavigation } from '../components/bottomnavigation';
+import { getSessionUser, setSession } from '../services/auth';
+
+const { width } = Dimensions.get('window');
+const BASE_W = 375;
+const wp = (px: number) => Math.round(PixelRatio.roundToNearestPixel((px / BASE_W) * width));
+const fs = (px: number) => Math.round(PixelRatio.roundToNearestPixel((px / BASE_W) * width));
+
+// Premium Theme Colors
+const NAVY = '#10173A';
+const GRAY = '#8A94A6';
+const GRAY_LT = '#F4F6F9';
+const WHITE = '#FFFFFF';
+const BLUE = '#1C69D4';
+const BORDER = '#EAEFF5';
+const RED = '#FF5C5C';
+const GOLD = '#F5A623';
+
+// ─── Custom Vector Icons (Drawn using React Native Views) ───
+
+// Gear/Settings Icon
+const SettingsIcon = () => (
+    <View style={{ width: wp(20), height: wp(20), alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: wp(12), height: wp(12), borderRadius: wp(6), borderWidth: 2.5, borderColor: WHITE }} />
+        {[0, 45, 90, 135].map((deg) => (
+            <View
+                key={deg}
+                style={{
+                    position: 'absolute',
+                    width: wp(20),
+                    height: wp(3),
+                    borderRadius: wp(1),
+                    backgroundColor: WHITE,
+                    opacity: 0.3,
+                    transform: [{ rotate: `${deg}deg` }],
+                    zIndex: -1,
+                }}
+            />
+        ))}
+    </View>
+);
+
+// Wallet Icon (replacing 👛/💳)
+const CustomWalletIcon = ({ color }: { color: string }) => (
+    <View style={{ width: wp(20), height: wp(16), borderRadius: wp(4), borderWidth: 2, borderColor: color, justifyContent: 'center' }}>
+        <View style={{ position: 'absolute', right: -wp(1), width: wp(6), height: wp(8), borderRadius: wp(2), backgroundColor: color, borderLeftWidth: 1, borderLeftColor: WHITE }} />
+        <View style={{ position: 'absolute', right: wp(1), width: wp(2), height: wp(2), borderRadius: wp(1), backgroundColor: WHITE }} />
+    </View>
+);
+
+// Car Icon (replacing 🏎️/🚗)
+const CustomCarIcon = ({ color }: { color: string }) => (
+    <View style={{ width: wp(22), height: wp(14), justifyContent: 'flex-end', position: 'relative' }}>
+        {/* Roof */}
+        <View style={{ width: wp(12), height: wp(6), borderTopLeftRadius: wp(4), borderTopRightRadius: wp(4), backgroundColor: color, alignSelf: 'center', marginBottom: -wp(1) }} />
+        {/* Body */}
+        <View style={{ width: wp(22), height: wp(7), borderRadius: wp(2), backgroundColor: color }} />
+        {/* Wheels */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: wp(2), marginTop: -wp(1) }}>
+            <View style={{ width: wp(5), height: wp(5), borderRadius: wp(2.5), backgroundColor: NAVY, borderWidth: 1, borderColor: WHITE }} />
+            <View style={{ width: wp(5), height: wp(5), borderRadius: wp(2.5), backgroundColor: NAVY, borderWidth: 1, borderColor: WHITE }} />
+        </View>
+    </View>
+);
+
+// Star Icon (replacing ⭐️)
+const CustomStarIcon = ({ color }: { color: string }) => (
+    <View style={{ width: wp(18), height: wp(18), alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontSize: fs(18), color, fontWeight: 'bold', lineHeight: fs(20) }}>★</Text>
+    </View>
+);
+
+// User Icon (replacing 👤)
+const CustomUserIcon = ({ color }: { color: string }) => (
+    <View style={{ alignItems: 'center', justifyContent: 'center', width: wp(20), height: wp(20) }}>
+        <View style={{ width: wp(10), height: wp(10), borderRadius: wp(5), borderWidth: 2, borderColor: color }} />
+        <View style={{ width: wp(18), height: wp(7), borderTopLeftRadius: wp(8), borderTopRightRadius: wp(8), borderWidth: 2, borderBottomWidth: 0, borderColor: color, marginTop: wp(1) }} />
+    </View>
+);
+
+// Bell Icon (replacing 🔔)
+const CustomBellIcon = ({ color }: { color: string }) => (
+    <View style={{ alignItems: 'center', width: wp(20), height: wp(20), justifyContent: 'center' }}>
+        <View style={{ width: wp(14), height: wp(12), borderTopLeftRadius: wp(7), borderTopRightRadius: wp(7), borderWidth: 2, borderColor: color, borderBottomWidth: 0 }} />
+        <View style={{ width: wp(18), height: wp(2.5), borderRadius: wp(1), backgroundColor: color }} />
+        <View style={{ width: wp(6), height: wp(3), borderBottomLeftRadius: wp(3), borderBottomRightRadius: wp(3), backgroundColor: color, marginTop: wp(0.5) }} />
+    </View>
+);
+
+// Moon Icon (replacing 🌙)
+const CustomMoonIcon = ({ color }: { color: string }) => (
+    <View style={{ width: wp(16), height: wp(16), borderRadius: wp(8), backgroundColor: color, position: 'relative' }}>
+        {/* Overlay to create crescent */}
+        <View style={{ position: 'absolute', top: -wp(2), left: -wp(2), width: wp(14), height: wp(14), borderRadius: wp(7), backgroundColor: WHITE }} />
+    </View>
+);
+
+// Shield Icon (replacing 🛡️)
+const CustomShieldIcon = ({ color }: { color: string }) => (
+    <View style={{ width: wp(16), height: wp(18), borderLeftWidth: 2, borderRightWidth: 2, borderBottomWidth: 2, borderTopWidth: 2, borderColor: color, borderBottomLeftRadius: wp(8), borderBottomRightRadius: wp(8), borderTopLeftRadius: wp(2), borderTopRightRadius: wp(2), alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: wp(6), height: wp(6), backgroundColor: color, borderRadius: wp(1) }} />
+    </View>
+);
+
+// Logout Icon (replacing 🚪)
+const CustomLogoutIcon = ({ color }: { color: string }) => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', width: wp(20), height: wp(20) }}>
+        {/* Arrow */}
+        <View style={{ width: wp(10), height: wp(2), backgroundColor: color, marginRight: -wp(2), position: 'relative', justifyContent: 'center' }}>
+            <View style={{ position: 'absolute', right: 0, width: wp(5), height: wp(5), borderTopWidth: 2, borderRightWidth: 2, borderColor: color, transform: [{ rotate: '45deg' }], marginTop: -wp(1.5) }} />
+        </View>
+        {/* Bracket */}
+        <View style={{ width: wp(6), height: wp(16), borderTopWidth: 2, borderBottomWidth: 2, borderRightWidth: 2, borderColor: color, borderTopRightRadius: wp(3), borderBottomRightRadius: wp(3) }} />
+    </View>
+);
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+export default function ProfileScreen() {
+    const navigation = useNavigation<NavigationProp>();
+    const [activeTab, setActiveTab] = useState(4); // Profile tab is 4
+    const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+    const [darkModeEnabled, setDarkModeEnabled] = useState(false);
+
+    // Entrance Animation Values
+    const headerFade = useRef(new Animated.Value(0)).current;
+    const headerTranslateY = useRef(new Animated.Value(-30)).current;
+    const contentFade = useRef(new Animated.Value(0)).current;
+    const contentTranslateY = useRef(new Animated.Value(45)).current;
+
+    useEffect(() => {
+        Animated.stagger(40, [
+            Animated.parallel([
+                Animated.timing(headerFade, { toValue: 1, duration: 180, useNativeDriver: true }),
+                Animated.timing(headerTranslateY, { toValue: 0, duration: 180, useNativeDriver: true }),
+            ]),
+            Animated.parallel([
+                Animated.timing(contentFade, { toValue: 1, duration: 200, useNativeDriver: true }),
+                Animated.timing(contentTranslateY, { toValue: 0, duration: 200, useNativeDriver: true }),
+            ]),
+        ]).start();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const sessionUser = getSessionUser();
+    const userProfile = {
+        name: sessionUser?.name || 'Andrew Ainsley',
+        email: sessionUser?.email || 'andrew.ainsley@gmail.com',
+        phone: sessionUser?.phone || '+1 111 467 378',
+        licenseNo: sessionUser?.licenseNo || 'DL-998246812',
+        rating: '4.9',
+        trips: 42,
+        wallet: '$248.50',
+    };
+
+    const initials = userProfile.name
+        .split(' ')
+        .filter(Boolean)
+        .map((n: string) => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase() || 'AA';
+
+    return (
+        <View style={s.screen}>
+            {/* Dark status bar to match navy header */}
+            <StatusBar barStyle="light-content" backgroundColor={NAVY} />
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContainer}>
+                
+                {/* ── Navy Curved Header (Animated) ── */}
+                <Animated.View style={[s.navyHeader, { opacity: headerFade, transform: [{ translateY: headerTranslateY }] }]}>
+                    {/* Background visual accents */}
+                    <View style={s.circleAccent1} />
+                    <View style={s.circleAccent2} />
+
+                    <View style={s.headerTop}>
+                        <Text style={s.headerTitle}>Profile</Text>
+                        <TouchableOpacity style={s.settingsIconBtn} activeOpacity={0.7}>
+                            <SettingsIcon />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Profile Card Inside Header */}
+                    <View style={s.profileCard}>
+                        <View style={s.avatarContainer}>
+                            <View style={s.avatar}>
+                                <Text style={s.avatarTxt}>{initials}</Text>
+                            </View>
+                            <View style={s.onlineBadge} />
+                        </View>
+                        <View style={s.profileInfo}>
+                            <Text style={s.profileName}>{userProfile.name}</Text>
+                            <Text style={s.profileEmail}>{userProfile.email}</Text>
+                            <View style={s.vipBadge}>
+                                <Text style={s.vipText}>★ VIP GOLD MEMBER</Text>
+                            </View>
+                        </View>
+                    </View>
+                </Animated.View>
+
+                {/* ── Floating Stats and Menu List (Animated) ── */}
+                <Animated.View style={{ opacity: contentFade, transform: [{ translateY: contentTranslateY }] }}>
+                    
+                    {/* ── Floating Stats Card ── */}
+                    <View style={s.statsContainer}>
+                        <View style={s.statBox}>
+                            <View style={s.statIconWrapper}>
+                                <CustomWalletIcon color={BLUE} />
+                            </View>
+                            <Text style={s.statVal}>{userProfile.wallet}</Text>
+                            <Text style={s.statLabel}>Wallet</Text>
+                        </View>
+                        <View style={s.statDivider} />
+                        <View style={s.statBox}>
+                            <View style={s.statIconWrapper}>
+                                <CustomCarIcon color="#10B981" />
+                            </View>
+                            <Text style={s.statVal}>{userProfile.trips}</Text>
+                            <Text style={s.statLabel}>Trips</Text>
+                        </View>
+                        <View style={s.statDivider} />
+                        <View style={s.statBox}>
+                            <View style={s.statIconWrapper}>
+                                <CustomStarIcon color={GOLD} />
+                            </View>
+                            <Text style={s.statVal}>{userProfile.rating}</Text>
+                            <Text style={s.statLabel}>Rating</Text>
+                        </View>
+                    </View>
+
+                    {/* ── Account Settings Section ── */}
+                    <View style={s.section}>
+                        <View style={s.sectionHeader}>
+                            <Text style={s.sectionTitle}>Account Settings</Text>
+                            <View style={s.titleBar} />
+                        </View>
+
+                        <TouchableOpacity style={s.menuItem} activeOpacity={0.75}>
+                            <View style={s.menuLeft}>
+                                <View style={[s.menuIconBg, { backgroundColor: '#EEF2FF' }]}>
+                                    <CustomUserIcon color="#4F46E5" />
+                                </View>
+                                <View style={s.menuTextContent}>
+                                    <Text style={s.menuTitle}>Personal Information</Text>
+                                    <Text style={s.menuSubtitle}>Manage your profile details</Text>
+                                </View>
+                            </View>
+                            <Text style={s.chevron}>›</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={s.menuItem} activeOpacity={0.75}>
+                            <View style={s.menuLeft}>
+                                <View style={[s.menuIconBg, { backgroundColor: '#ECFDF5' }]}>
+                                    <CustomWalletIcon color="#10B981" />
+                                </View>
+                                <View style={s.menuTextContent}>
+                                    <Text style={s.menuTitle}>Payment Methods</Text>
+                                    <Text style={s.menuSubtitle}>Saved cards and payment accounts</Text>
+                                </View>
+                            </View>
+                            <Text style={s.chevron}>›</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={s.menuItem} activeOpacity={0.75} onPress={() => navigation.navigate('Home')}>
+                            <View style={s.menuLeft}>
+                                <View style={[s.menuIconBg, { backgroundColor: '#EFF6FF' }]}>
+                                    <CustomCarIcon color={BLUE} />
+                                </View>
+                                <View style={s.menuTextContent}>
+                                    <Text style={s.menuTitle}>My Bookings</Text>
+                                    <Text style={s.menuSubtitle}>Active, pending, and past rentals</Text>
+                                </View>
+                            </View>
+                            <Text style={s.chevron}>›</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* ── Preferences Section ── */}
+                    <View style={s.section}>
+                        <View style={s.sectionHeader}>
+                            <Text style={s.sectionTitle}>Preferences</Text>
+                            <View style={s.titleBar} />
+                        </View>
+
+                        <View style={s.menuItemNonClickable}>
+                            <View style={s.menuLeft}>
+                                <View style={[s.menuIconBg, { backgroundColor: '#FFF7ED' }]}>
+                                    <CustomBellIcon color="#F97316" />
+                                </View>
+                                <View style={s.menuTextContent}>
+                                    <Text style={s.menuTitle}>Notifications</Text>
+                                    <Text style={s.menuSubtitle}>Get updates on deals and rides</Text>
+                                </View>
+                            </View>
+                            <Switch
+                                value={notificationsEnabled}
+                                onValueChange={setNotificationsEnabled}
+                                trackColor={{ false: '#E2E8F0', true: BLUE }}
+                                thumbColor={WHITE}
+                            />
+                        </View>
+
+                        <View style={s.menuItemNonClickable}>
+                            <View style={s.menuLeft}>
+                                <View style={[s.menuIconBg, { backgroundColor: '#F8FAFC' }]}>
+                                    <CustomMoonIcon color="#64748B" />
+                                </View>
+                                <View style={s.menuTextContent}>
+                                    <Text style={s.menuTitle}>Dark Mode</Text>
+                                    <Text style={s.menuSubtitle}>Switch app presentation style</Text>
+                                </View>
+                            </View>
+                            <Switch
+                                value={darkModeEnabled}
+                                onValueChange={setDarkModeEnabled}
+                                trackColor={{ false: '#E2E8F0', true: BLUE }}
+                                thumbColor={WHITE}
+                            />
+                        </View>
+                    </View>
+
+                    {/* ── Support & Legal ── */}
+                    <View style={s.section}>
+                        <View style={s.sectionHeader}>
+                            <Text style={s.sectionTitle}>Support & Legal</Text>
+                            <View style={s.titleBar} />
+                        </View>
+
+                        <TouchableOpacity style={s.menuItem} activeOpacity={0.75}>
+                            <View style={s.menuLeft}>
+                                <View style={[s.menuIconBg, { backgroundColor: '#ECFEFF' }]}>
+                                    <CustomShieldIcon color="#0891B2" />
+                                </View>
+                                <View style={s.menuTextContent}>
+                                    <Text style={s.menuTitle}>Privacy Policy</Text>
+                                    <Text style={s.menuSubtitle}>Data privacy and terms of service</Text>
+                                </View>
+                            </View>
+                            <Text style={s.chevron}>›</Text>
+                        </TouchableOpacity>
+
+                        {/* Red themed elegant logout button */}
+                        <TouchableOpacity 
+                            style={s.logoutBtn} 
+                            activeOpacity={0.8} 
+                            onPress={async () => {
+                                await setSession(null, null);
+                                navigation.navigate('Login');
+                            }}
+                        >
+                            <View style={s.logoutContent}>
+                                <CustomLogoutIcon color={RED} />
+                                <Text style={s.logoutText}>Log Out</Text>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+
+                </Animated.View>
+
+                <View style={{ height: wp(40) }} />
+            </ScrollView>
+
+            {/* ── Bottom Nav Component ── */}
+            <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+        </View>
+    );
+}
+
+const s = StyleSheet.create({
+    screen: { flex: 1, backgroundColor: '#FAFBFD' },
+    scrollContainer: { flexGrow: 1 },
+    
+    // Navy Curved Header Banner
+    navyHeader: {
+        backgroundColor: NAVY,
+        paddingTop: wp(20),
+        paddingHorizontal: wp(24),
+        paddingBottom: wp(48),
+        borderBottomLeftRadius: wp(32),
+        borderBottomRightRadius: wp(32),
+        position: 'relative',
+        overflow: 'hidden',
+    },
+    circleAccent1: {
+        position: 'absolute',
+        top: -wp(40),
+        right: -wp(40),
+        width: wp(140),
+        height: wp(140),
+        borderRadius: wp(70),
+        backgroundColor: 'rgba(28, 105, 212, 0.15)',
+    },
+    circleAccent2: {
+        position: 'absolute',
+        bottom: -wp(30),
+        left: -wp(30),
+        width: wp(100),
+        height: wp(100),
+        borderRadius: wp(50),
+        backgroundColor: 'rgba(28, 105, 212, 0.08)',
+    },
+    headerTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: wp(24),
+    },
+    headerTitle: {
+        fontSize: fs(24),
+        fontWeight: '900',
+        color: WHITE,
+        letterSpacing: 0.5,
+    },
+    settingsIconBtn: {
+        width: wp(40),
+        height: wp(40),
+        borderRadius: wp(20),
+        backgroundColor: 'rgba(255,255,255,0.12)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    profileCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    avatarContainer: {
+        position: 'relative',
+        marginRight: wp(16),
+    },
+    avatar: {
+        width: wp(80),
+        height: wp(80),
+        borderRadius: wp(40),
+        backgroundColor: '#C8D8FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 3,
+        borderColor: 'rgba(255,255,255,0.8)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: wp(4) },
+        shadowOpacity: 0.2,
+        shadowRadius: wp(6),
+        elevation: 5,
+    },
+    avatarTxt: {
+        fontSize: fs(26),
+        fontWeight: '900',
+        color: NAVY,
+    },
+    onlineBadge: {
+        position: 'absolute',
+        right: wp(2),
+        bottom: wp(2),
+        width: wp(16),
+        height: wp(16),
+        borderRadius: wp(8),
+        backgroundColor: '#10B981',
+        borderWidth: 2.5,
+        borderColor: NAVY,
+    },
+    profileInfo: {
+        flex: 1,
+        gap: wp(3),
+    },
+    profileName: {
+        fontSize: fs(20),
+        fontWeight: '800',
+        color: WHITE,
+    },
+    profileEmail: {
+        fontSize: fs(13),
+        fontWeight: '500',
+        color: 'rgba(255,255,255,0.7)',
+    },
+    vipBadge: {
+        alignSelf: 'flex-start',
+        backgroundColor: GOLD,
+        paddingHorizontal: wp(8),
+        paddingVertical: wp(3),
+        borderRadius: wp(6),
+        marginTop: wp(4),
+    },
+    vipText: {
+        fontSize: fs(9),
+        fontWeight: '900',
+        color: NAVY,
+        letterSpacing: 0.8,
+    },
+
+    // Floating Stats Card
+    statsContainer: {
+        flexDirection: 'row',
+        backgroundColor: WHITE,
+        marginHorizontal: wp(24),
+        borderRadius: wp(24),
+        paddingVertical: wp(16),
+        borderWidth: 1.5,
+        borderColor: 'rgba(234, 237, 244, 0.8)',
+        marginTop: -wp(28),
+        marginBottom: wp(24),
+        shadowColor: '#10173A',
+        shadowOffset: { width: 0, height: wp(8) },
+        shadowOpacity: 0.08,
+        shadowRadius: wp(12),
+        elevation: 8,
+    },
+    statBox: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    statIconWrapper: {
+        height: wp(32),
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: wp(6),
+    },
+    statVal: {
+        fontSize: fs(15),
+        fontWeight: '800',
+        color: NAVY,
+        marginBottom: wp(2),
+    },
+    statLabel: {
+        fontSize: fs(11),
+        fontWeight: '600',
+        color: GRAY,
+    },
+    statDivider: {
+        width: 1,
+        height: wp(35),
+        backgroundColor: BORDER,
+        alignSelf: 'center',
+    },
+
+    // Menu Sections
+    section: {
+        marginHorizontal: wp(24),
+        marginBottom: wp(24),
+    },
+    sectionHeader: {
+        marginBottom: wp(12),
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: wp(8),
+    },
+    sectionTitle: {
+        fontSize: fs(13),
+        fontWeight: '900',
+        color: NAVY,
+        textTransform: 'uppercase',
+        letterSpacing: wp(0.8),
+    },
+    titleBar: {
+        flex: 1,
+        height: 1.5,
+        backgroundColor: BORDER,
+    },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: WHITE,
+        paddingHorizontal: wp(16),
+        paddingVertical: wp(14),
+        borderRadius: wp(20),
+        borderWidth: 1.5,
+        borderColor: 'rgba(234, 237, 244, 0.7)',
+        marginBottom: wp(10),
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: wp(2) },
+        shadowOpacity: 0.01,
+        shadowRadius: wp(4),
+        elevation: 1,
+    },
+    menuItemNonClickable: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: WHITE,
+        paddingHorizontal: wp(16),
+        paddingVertical: wp(14),
+        borderRadius: wp(20),
+        borderWidth: 1.5,
+        borderColor: 'rgba(234, 237, 244, 0.7)',
+        marginBottom: wp(10),
+    },
+    menuLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        gap: wp(12),
+    },
+    menuIconBg: {
+        width: wp(40),
+        height: wp(40),
+        borderRadius: wp(12),
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    menuTextContent: {
+        gap: wp(1),
+    },
+    menuTitle: {
+        fontSize: fs(14),
+        fontWeight: '700',
+        color: NAVY,
+    },
+    menuSubtitle: {
+        fontSize: fs(11),
+        fontWeight: '500',
+        color: GRAY,
+    },
+    chevron: {
+        fontSize: fs(22),
+        color: GRAY,
+        fontWeight: '600',
+    },
+
+    // Elegant Logout Button
+    logoutBtn: {
+        backgroundColor: '#FFEBEB',
+        paddingVertical: wp(14),
+        borderRadius: wp(20),
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: '#FFD1D1',
+        marginTop: wp(10),
+        shadowColor: RED,
+        shadowOffset: { width: 0, height: wp(4) },
+        shadowOpacity: 0.05,
+        shadowRadius: wp(8),
+        elevation: 2,
+    },
+    logoutContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: wp(8),
+    },
+    logoutText: {
+        fontSize: fs(15),
+        fontWeight: '800',
+        color: RED,
+    },
+});

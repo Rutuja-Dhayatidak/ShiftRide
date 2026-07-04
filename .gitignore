@@ -1,0 +1,38 @@
+# Env files
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# React Native
+**/android/.gradle/
+**/android/app/build/
+**/android/build/
+**/android/local.properties
+**/ios/Pods/
+**/ios/build/
+
+# Backend
+dist/
+build/
+uploads/
+storage/
+logs/
+*.log
+
+# Secrets
+*.jks
+*.keystore
+*.pem
+*.key
+*.crt
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
