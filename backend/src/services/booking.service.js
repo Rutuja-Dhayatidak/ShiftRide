@@ -48,6 +48,8 @@ async function createBooking({
   start_time = null,
   billing_type = "PER_DAY",
   distance_km = null,
+  bookingSource = "WEBSITE",
+  women_safety_mode = false,
 }) {
   const car = await getCarById(car_id);
   if (!car) throw new Error("Car not found");
@@ -85,6 +87,18 @@ async function createBooking({
     ? Number((baseRate * days).toFixed(2))
     : Number((baseRate * billedKm).toFixed(2));
 
+  let finalStartTime = start_time;
+  if (!finalStartTime && start_date) {
+    const dateObj = new Date(start_date);
+    if (!Number.isNaN(dateObj.getTime())) {
+      finalStartTime = dateObj.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    }
+  }
+
   const booking = await Booking.create({
     user_id,
     car_id,
@@ -96,10 +110,16 @@ async function createBooking({
     rate_per_day,
     rate_per_km,
     total_amount,
-    status: "BOOKED",
+    status: "REQUESTED",
+    bookingStatus: "REQUESTED",
+    paymentStatus: "NOT_PAID",
+    razorpayOrderId: null,
+    razorpayPaymentId: null,
     booking_mode,
     billing_type,
-    start_time,
+    start_time: finalStartTime,
+    bookingSource,
+    women_safety_mode,
   });
 
   return {
@@ -116,7 +136,7 @@ async function createBooking({
 
 async function getMyBookings(user_id) {
   const docs = await Booking.find({ user_id })
-    .populate({ path: "car_id", select: "name brand cars_image" })
+    .populate({ path: "car_id", select: "name brand cars_image vehicle_number model_name" })
     .populate({ path: "driverId", select: "driverName phone licenseNumber driverPhoto status" })
     .sort({ created_at: -1 })
     .lean();

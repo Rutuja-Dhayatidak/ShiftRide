@@ -10,6 +10,12 @@ C:\carApp\ShiftRide\android\app\.cxx\Debug\6w375qs5\x86\RNDateTimePickerCGen_aut
 C:\carApp\ShiftRide\android\app\.cxx\Debug\6w375qs5\x86\RNDateTimePickerCGen_autolinked_build\CMakeFiles\react_codegen_RNDateTimePickerCGen.dir\react\renderer\components\RNDateTimePickerCGen\Props.cpp.o
 C:\carApp\ShiftRide\android\app\.cxx\Debug\6w375qs5\x86\RNDateTimePickerCGen_autolinked_build\CMakeFiles\react_codegen_RNDateTimePickerCGen.dir\react\renderer\components\RNDateTimePickerCGen\ShadowNodes.cpp.o
 C:\carApp\ShiftRide\android\app\.cxx\Debug\6w375qs5\x86\RNDateTimePickerCGen_autolinked_build\CMakeFiles\react_codegen_RNDateTimePickerCGen.dir\react\renderer\components\RNDateTimePickerCGen\States.cpp.o
+C:\carApp\ShiftRide\android\app\.cxx\Debug\6w375qs5\x86\RNCGeolocationSpec_autolinked_build\CMakeFiles\react_codegen_RNCGeolocationSpec.dir\RNCGeolocationSpec-generated.cpp.o
+C:\carApp\ShiftRide\android\app\.cxx\Debug\6w375qs5\x86\RNCGeolocationSpec_autolinked_build\CMakeFiles\react_codegen_RNCGeolocationSpec.dir\react\renderer\components\RNCGeolocationSpec\ComponentDescriptors.cpp.o
+C:\carApp\ShiftRide\android\app\.cxx\Debug\6w375qs5\x86\RNCGeolocationSpec_autolinked_build\CMakeFiles\react_codegen_RNCGeolocationSpec.dir\react\renderer\components\RNCGeolocationSpec\EventEmitters.cpp.o
+C:\carApp\ShiftRide\android\app\.cxx\Debug\6w375qs5\x86\RNCGeolocationSpec_autolinked_build\CMakeFiles\react_codegen_RNCGeolocationSpec.dir\react\renderer\components\RNCGeolocationSpec\Props.cpp.o
+C:\carApp\ShiftRide\android\app\.cxx\Debug\6w375qs5\x86\RNCGeolocationSpec_autolinked_build\CMakeFiles\react_codegen_RNCGeolocationSpec.dir\react\renderer\components\RNCGeolocationSpec\ShadowNodes.cpp.o
+C:\carApp\ShiftRide\android\app\.cxx\Debug\6w375qs5\x86\RNCGeolocationSpec_autolinked_build\CMakeFiles\react_codegen_RNCGeolocationSpec.dir\react\renderer\components\RNCGeolocationSpec\States.cpp.o
 C:\carApp\ShiftRide\android\app\.cxx\Debug\6w375qs5\x86\RNRazorpayCheckoutSpec_autolinked_build\CMakeFiles\react_codegen_RNRazorpayCheckoutSpec.dir\RNRazorpayCheckoutSpec-generated.cpp.o
 C:\carApp\ShiftRide\android\app\.cxx\Debug\6w375qs5\x86\RNRazorpayCheckoutSpec_autolinked_build\CMakeFiles\react_codegen_RNRazorpayCheckoutSpec.dir\react\renderer\components\RNRazorpayCheckoutSpec\ComponentDescriptors.cpp.o
 C:\carApp\ShiftRide\android\app\.cxx\Debug\6w375qs5\x86\RNRazorpayCheckoutSpec_autolinked_build\CMakeFiles\react_codegen_RNRazorpayCheckoutSpec.dir\react\renderer\components\RNRazorpayCheckoutSpec\EventEmitters.cpp.o

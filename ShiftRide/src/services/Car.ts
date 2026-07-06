@@ -3,12 +3,13 @@ import api from './api';
 /**
  * Search cars from backend based on pickup location, drop location and date
  */
-export const searchCars = async (pickup: string, drop: string, date: string) => {
+export const searchCars = async (pickup: string, drop: string, date: string, womenSafety?: boolean) => {
   const response = await api.get('/cars/search', {
     params: {
       pickup,
       drop,
       date,
+      women_safety: womenSafety ? 'true' : 'false',
     },
   });
   return response.data;

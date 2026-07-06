@@ -1,0 +1,6 @@
+C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/CMakeFiles/appmodules.dir
+C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/CMakeFiles/rebuild_cache.dir
+C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir
+C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/safeareacontext_autolinked_build/CMakeFiles/edit_cache.dir
+C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/safeareacontext_autolinked_build/CMakeFiles/rebuild_cache.dir

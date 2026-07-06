@@ -2,6 +2,7 @@
   "buildFiles": [
     "C:\\carApp\\ShiftRide\\node_modules\\@react-native-async-storage\\async-storage\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRide\\node_modules\\@react-native-community\\datetimepicker\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
+    "C:\\carApp\\ShiftRide\\node_modules\\@react-native-community\\geolocation\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRide\\node_modules\\react-native-razorpay\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRide\\node_modules\\react-native-safe-area-context\\android\\src\\main\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRide\\node_modules\\react-native-screens\\android\\src\\main\\jni\\CMakeLists.txt",
@@ -61,6 +62,11 @@
     },
     "react_codegen_AsyncStorageSpec::@15af80695a6281ecf900": {
       "artifactName": "react_codegen_AsyncStorageSpec",
+      "abi": "x86",
+      "runtimeFiles": []
+    },
+    "react_codegen_RNCGeolocationSpec::@1b959fcb56e23f7716ba": {
+      "artifactName": "react_codegen_RNCGeolocationSpec",
       "abi": "x86",
       "runtimeFiles": []
     },

@@ -1,6 +1,6 @@
 const { Booking, Car, Driver } = require("../../models/mongo");
 
-const OWNER_ALLOWED_STATUS = ["CONFIRMED", "COMPLETED", "CANCEL_REQUESTED"];
+const OWNER_ALLOWED_STATUS = ["REQUESTED", "FORWARDED_TO_DRIVER", "DRIVER_ACCEPTED", "CONFIRMED", "COMPLETED", "CANCEL_REQUESTED"];
 
 exports.getMyCarBookings = async (req, res) => {
   try {
@@ -56,11 +56,9 @@ exports.assignDriver = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized (this booking is not for your car)" });
     }
 
-    // Verify booking states (paymentStatus === "PAID" and status / bookingStatus === "CONFIRMED" or status === "BOOKED")
-    const isPaid = booking.paymentStatus === "PAID";
-    const isConfirmed = booking.bookingStatus === "CONFIRMED" || booking.status === "BOOKED";
-    if (!isPaid || !isConfirmed) {
-      return res.status(400).json({ message: "Booking must be PAID and CONFIRMED to assign a driver" });
+    // Verify booking state is REQUESTED
+    if (booking.bookingStatus !== "REQUESTED") {
+      return res.status(400).json({ message: "Booking status must be REQUESTED to assign/forward to a driver" });
     }
 
     // Verify driver belongs to vendor and is AVAILABLE
@@ -76,8 +74,8 @@ exports.assignDriver = async (req, res) => {
     booking.driverId = driverId;
     booking.driverAssigned = true;
     booking.driverAssignedAt = new Date();
-    booking.bookingStatus = "DRIVER_ASSIGNED";
-    booking.status = "DRIVER_ASSIGNED"; // update status to let vendor know too
+    booking.bookingStatus = "FORWARDED_TO_DRIVER";
+    booking.status = "FORWARDED_TO_DRIVER"; // update status to let vendor/user know too
     await booking.save();
 
     driver.status = "BUSY";

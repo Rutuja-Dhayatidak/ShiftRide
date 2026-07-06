@@ -15,4 +15,10 @@ router.post(
   paymentController.verifyPayment
 );
 
+router.post(
+  "/initiate/:bookingId",
+  jwtUtils.authMiddleware("user"),
+  paymentController.initiatePaymentForBooking
+);
+
 module.exports = router;

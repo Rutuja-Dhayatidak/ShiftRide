@@ -67,7 +67,6 @@ export const BottomNavigation = ({ activeTab, setActiveTab }: BottomNavigationPr
     const navigation = useNavigation<NativeStackNavigationProp<any>>();
     const navItems = [
         { label: 'Search', icon: <HouseIcon /> },
-        { label: 'orders', icon: <OrderIcon /> },
         { label: 'Bookings', icon: <WalletIcon /> },
         { label: 'Inbox', icon: <InboxIcon /> },
         { label: 'Profile', icon: <PersonIcon /> },
@@ -85,8 +84,6 @@ export const BottomNavigation = ({ activeTab, setActiveTab }: BottomNavigationPr
                             if (i === 0) {
                                 navigation.navigate('Search');
                             } else if (i === 1) {
-                                navigation.navigate('Home');
-                            } else if (i === 2) {
                                 const token = getSessionToken();
                                 if (!token) {
                                     Alert.alert(
@@ -100,7 +97,7 @@ export const BottomNavigation = ({ activeTab, setActiveTab }: BottomNavigationPr
                                 } else {
                                     navigation.navigate('MyBookings');
                                 }
-                            } else if (i === 4) {
+                            } else if (i === 3) {
                                 const token = getSessionToken();
                                 if (!token) {
                                     Alert.alert(

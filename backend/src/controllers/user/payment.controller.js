@@ -119,6 +119,7 @@ exports.createBookingOrder = async (req, res) => {
       start_time,
       women_safety_mode,
       customerInfo: customerInfo || null,
+      bookingSource: req.body.bookingSource || "WEBSITE",
     });
 
     // 4. Create Razorpay Order
@@ -251,5 +252,92 @@ exports.verifyPayment = async (req, res) => {
   } catch (err) {
     console.error("VERIFY PAYMENT ERROR:", err);
     return res.status(500).json({ message: err.message || "Verification failed" });
+  }
+};
+
+exports.initiatePaymentForBooking = async (req, res) => {
+  try {
+    const user_id = getUserId(req);
+    if (!user_id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { bookingId } = req.params;
+    if (!bookingId) {
+      return res.status(400).json({ message: "bookingId is required" });
+    }
+
+    // 1. Fetch Booking
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Check status
+    if (booking.bookingStatus !== "DRIVER_ACCEPTED" || booking.paymentStatus !== "NOT_PAID") {
+      return res.status(400).json({ message: "Payment can only be initiated when driver has accepted the booking and payment is not paid" });
+    }
+
+    // 2. Fetch Car and Vendor
+    const car = await Car.findById(booking.car_id);
+    if (!car) {
+      return res.status(404).json({ message: "Car not found" });
+    }
+
+    const vendor = await Vendor.findById(car.car_user_id);
+    if (!vendor) {
+      return res.status(404).json({ message: "Vendor not found for this car" });
+    }
+
+    // In production, split payments require linked account setup
+    const isLive = process.env.RAZORPAY_KEY_ID && !process.env.RAZORPAY_KEY_ID.startsWith("your_");
+    if (isLive) {
+      if (vendor.status !== "APPROVED") {
+        return res.status(400).json({ message: "Vendor is not approved to receive bookings" });
+      }
+      if (!vendor.canReceivePayments || !vendor.razorpayLinkedAccountId) {
+        return res.status(400).json({ message: "Vendor payment account is not active" });
+      }
+    }
+
+    // 3. Create Razorpay Order
+    let razorpayOrderId = null;
+    let orderDetails = null;
+
+    try {
+      const order = await razorpayService.createOrder({
+        amount: Math.round(booking.total_amount * 100), // Razorpay works in paise
+        vendorAccountId: vendor.razorpayLinkedAccountId,
+        vendorAmount: Math.round(booking.baseFare * 100), // baseFare split directly to vendor
+        bookingId: booking._id
+      });
+
+      razorpayOrderId = order.id;
+      orderDetails = order;
+
+      // Update booking with Razorpay Order ID
+      booking.razorpayOrderId = razorpayOrderId;
+      await booking.save();
+    } catch (orderErr) {
+      console.error("RAZORPAY ORDER CREATION FAILED FOR EXISTING BOOKING:", orderErr);
+      return res.status(500).json({ message: `Razorpay order creation failed: ${orderErr.message}` });
+    }
+
+    return res.status(200).json({
+      message: "Order created successfully for existing booking",
+      booking_id: String(booking._id),
+      razorpayOrderId,
+      orderDetails,
+      pricing: {
+        baseFare: booking.baseFare,
+        platformFee: booking.platformFee,
+        gst: booking.gst,
+        totalAmount: booking.total_amount,
+      },
+      keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_SNw35MkokY8h1y"
+    });
+  } catch (err) {
+    console.error("INITIATE PAYMENT ERROR:", err);
+    return res.status(500).json({ message: err.message || "Failed to initiate payment" });
   }
 };

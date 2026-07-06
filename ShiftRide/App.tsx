@@ -32,11 +32,11 @@ export type RootStackParamList = {
   Home: undefined;
   Search: undefined;
   Profile: undefined;
-  CarResults: { fromLoc?: string; toLoc?: string } | undefined;
-  CarDetails: { carId: string; distance?: string; duration?: string; estimatedFare?: number; pickup?: string; drop?: string };
-  Billing: { carId: string };
-  Payment: { carId: string; billingData: any };
-  ReviewSummary: { carId: string; billingData: any; paymentMethod: string };
+  CarResults: { fromLoc?: string; toLoc?: string; womenSafety?: boolean } | undefined;
+  CarDetails: { carId: string; distance?: string; duration?: string; estimatedFare?: number; pickup?: string; drop?: string; womenSafety?: boolean };
+  Billing: { carId: string; womenSafety?: boolean };
+  Payment: { carId: string; billingData: any; womenSafety?: boolean };
+  ReviewSummary: { carId: string; billingData: any; paymentMethod: string; womenSafety?: boolean };
   MyBookings: undefined;
   BookingDetails: { bookingId: string };
   ForgotPassword: undefined;

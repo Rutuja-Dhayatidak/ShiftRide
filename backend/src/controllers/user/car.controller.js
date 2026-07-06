@@ -212,6 +212,7 @@ exports.suggestCars = async (req, res) => {
 exports.searchCars = async (req, res) => {
   try {
     const { pickup, drop, date, time, budget, women_safety } = req.query;
+    console.log("SEARCH_CARS QUERY PARAMS:", req.query);
 
     if (!pickup || !drop) {
       return res.status(400).json({ success: false, message: "Pickup and Drop locations are required" });
@@ -258,6 +259,8 @@ exports.searchCars = async (req, res) => {
     if (women_safety === "true" || women_safety === "1" || women_safety === true) {
       carQuery.women_safety_verified = true;
     }
+    console.log("SEARCH_CARS MONGO QUERY:", carQuery);
+    console.log("APPROVED VENDOR IDS:", approvedVendorIds);
 
     const cars = await Car.find(carQuery).lean();
 

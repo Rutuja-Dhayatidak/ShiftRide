@@ -16,8 +16,9 @@ export const createBookingOrder = async (bookingData: {
   name?: string;
   email?: string;
   phone?: string;
+  bookingSource?: string;
 }) => {
-  const response = await api.post('/payments/create-order', bookingData);
+  const response = await api.post('/payments/create-order', { ...bookingData, bookingSource: 'APP' });
   return response.data;
 };
 
@@ -31,5 +32,13 @@ export const verifyPayment = async (verificationData: {
   razorpay_signature: string;
 }) => {
   const response = await api.post('/payments/verify', verificationData);
+  return response.data;
+};
+
+/**
+ * Initiate Razorpay payment for an existing driver-accepted booking
+ */
+export const initiatePaymentForBooking = async (bookingId: string) => {
+  const response = await api.post(`/payments/initiate/${bookingId}`);
   return response.data;
 };

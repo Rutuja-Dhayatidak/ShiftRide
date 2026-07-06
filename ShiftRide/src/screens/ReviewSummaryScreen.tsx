@@ -18,6 +18,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { createBookingOrder, verifyPayment } from '../services/payment';
 import RazorpayCheckout from 'react-native-razorpay';
+import api from '../services/api';
 
 const { width } = Dimensions.get('window');
 const BASE_W = 375;
@@ -128,7 +129,7 @@ export default function ReviewSummaryScreen() {
                 }
             }
 
-            const bookingResponse = await createBookingOrder({
+            const bookingResponse = await api.post('/bookings/booking', {
                 car_id: targetCarId,
                 pickup_location: pickupLoc,
                 drop_location: dropLoc,
@@ -138,63 +139,28 @@ export default function ReviewSummaryScreen() {
                 billing_type: 'PER_DAY',
                 name: billingData.name || 'Andrew Ainsley',
                 email: billingData.email || 'andrew.ainsley@gmail.com',
-                phone: billingData.phone || '9999999999'
+                phone: billingData.phone || '9999999999',
+                bookingSource: 'APP',
+                women_safety_mode: route.params?.womenSafety || false
             });
 
-            if (bookingResponse && bookingResponse.booking_id) {
-                const options = {
-                    description: `Booking for ${car.name}`,
-                    image: 'https://i.imgur.com/3g7nmJC.png',
-                    currency: 'INR',
-                    key: bookingResponse.keyId || 'rzp_test_SNw35MkokY8h1y',
-                    amount: Math.round(bookingResponse.pricing.totalAmount * 100), // Razorpay accepts in paise
-                    name: 'ShiftRide',
-                    order_id: bookingResponse.razorpayOrderId,
-                    prefill: {
-                        email: billingData.email || 'andrew.ainsley@gmail.com',
-                        contact: billingData.phone || '9999999999',
-                        name: billingData.name || 'Andrew Ainsley'
-                    },
-                    theme: { color: '#1A6BFF' }
-                };
-
-                // Stop the loading indicator on button before opening Razorpay checkout
+            if (bookingResponse && bookingResponse.data && bookingResponse.data.booking_id) {
                 setSubmitting(false);
-
-                RazorpayCheckout.open(options).then(async (data: any) => {
-                    try {
-                        setSubmitting(true);
-                        const verifyResponse = await verifyPayment({
-                            booking_id: bookingResponse.booking_id,
-                            razorpay_order_id: data.razorpay_order_id,
-                            razorpay_payment_id: data.razorpay_payment_id,
-                            razorpay_signature: data.razorpay_signature
-                        });
-
-                        if (verifyResponse) {
-                            Alert.alert(
-                                'Booking Confirmed',
-                                `Thank you, ${billingData.name || 'customer'}! Your booking is successfully confirmed.`,
-                                [
-                                    {
-                                        text: 'View Bookings',
-                                        onPress: () => navigation.navigate('MyBookings'),
-                                    }
-                                ]
-                            );
+                Alert.alert(
+                    'Booking Requested',
+                    `Your request has been sent! Once the driver accepts, you will be prompted to complete the payment.`,
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => navigation.navigate('MyBookings'),
                         }
-                    } catch (err: any) {
-                        const msg = err.response?.data?.message || err.message || 'Payment verification failed';
-                        Alert.alert('Verification Error', msg);
-                    } finally {
-                        setSubmitting(false);
-                    }
-                }).catch((error: any) => {
-                    Alert.alert('Payment Error', `Code: ${error.code} | Description: ${error.description}`);
-                });
+                    ]
+                );
+            } else {
+                throw new Error("Invalid response from server");
             }
         } catch (err: any) {
-            const msg = err.response?.data?.message || err.message || 'Payment verification failed';
+            const msg = err.response?.data?.message || err.message || 'Request failed';
             Alert.alert('Booking Error', msg);
             setSubmitting(false);
         }
@@ -351,7 +317,7 @@ export default function ReviewSummaryScreen() {
                     {submitting ? (
                         <ActivityIndicator color={WHITE} size="small" />
                     ) : (
-                        <Text style={s.payBtnTxt}>Pay ₹{totalPayableVal.toLocaleString('en-IN')}</Text>
+                        <Text style={s.payBtnTxt}>Send Booking Request</Text>
                     )}
                 </TouchableOpacity>
             </View>

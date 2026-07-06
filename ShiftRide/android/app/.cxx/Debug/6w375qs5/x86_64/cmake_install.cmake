@@ -46,6 +46,7 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
   include("C:/carApp/ShiftRide/android/app/.cxx/Debug/6w375qs5/x86_64/AsyncStorageSpec_autolinked_build/cmake_install.cmake")
   include("C:/carApp/ShiftRide/android/app/.cxx/Debug/6w375qs5/x86_64/RNDateTimePickerCGen_autolinked_build/cmake_install.cmake")
+  include("C:/carApp/ShiftRide/android/app/.cxx/Debug/6w375qs5/x86_64/RNCGeolocationSpec_autolinked_build/cmake_install.cmake")
   include("C:/carApp/ShiftRide/android/app/.cxx/Debug/6w375qs5/x86_64/RNRazorpayCheckoutSpec_autolinked_build/cmake_install.cmake")
   include("C:/carApp/ShiftRide/android/app/.cxx/Debug/6w375qs5/x86_64/safeareacontext_autolinked_build/cmake_install.cmake")
   include("C:/carApp/ShiftRide/android/app/.cxx/Debug/6w375qs5/x86_64/rnscreens_autolinked_build/cmake_install.cmake")

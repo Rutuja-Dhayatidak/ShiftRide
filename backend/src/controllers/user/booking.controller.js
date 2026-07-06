@@ -85,6 +85,8 @@ exports.createBooking = async (req, res) => {
 
       billing_type: (req.body.billing_type || "PER_DAY").toUpperCase(),
       distance_km: req.body.distance_km ?? null,
+      bookingSource: req.body.bookingSource || "WEBSITE",
+      women_safety_mode: req.body.women_safety_mode || false,
     };
     const data = await bookingService.createBooking(payload);
     return res.status(201).json({ message: "Booking created", ...data });

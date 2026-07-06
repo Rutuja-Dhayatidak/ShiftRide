@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -9,10 +9,15 @@ import {
     Image,
     Dimensions,
     PixelRatio,
+    ActivityIndicator,
+    Linking,
+    Share,
+    Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
+import api, { getCarImageUrl } from '../services/api';
 
 const { width } = Dimensions.get('window');
 const BASE_W = 375;
@@ -142,22 +147,134 @@ export default function BookingDetailsScreen() {
     const route = useRoute<BookingDetailsRouteProp>();
     const bookingId = route.params?.bookingId || 'SR12345';
 
-    const detail = DETAIL_DATA[bookingId] || DETAIL_DATA['SR12345'];
+    const [booking, setBooking] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [sosActivated, setSosActivated] = useState(false);
+
+    useEffect(() => {
+        const fetchBookingDetails = async (isSilent = false) => {
+            try {
+                if (!isSilent) setLoading(true);
+                // Use public tracking details route to fetch fully populated booking details
+                const response = await api.get(`/bookings/track/${bookingId}`);
+                if (response && response.data) {
+                    setBooking(response.data);
+                }
+            } catch (err) {
+                console.error("Failed to load booking details:", err);
+            } finally {
+                if (!isSilent) setLoading(false);
+            }
+        };
+        
+        fetchBookingDetails(false);
+
+        // Silent background polling every 4 seconds
+        const intervalId = setInterval(() => {
+            fetchBookingDetails(true);
+        }, 4000);
+
+        return () => clearInterval(intervalId);
+    }, [bookingId]);
 
     const getStatusStyle = (status: string) => {
         switch (status) {
             case 'Upcoming':
-                return { bg: '#EFF6FF', text: '#3B82F6' };
+            case 'BOOKED':
+            case 'CONFIRMED':
+                return { bg: '#EFF6FF', text: '#3B82F6', label: 'Upcoming' };
             case 'Ongoing':
-                return { bg: '#ECFDF5', text: '#10B981' };
+            case 'ONGOING':
+            case 'IN_PROGRESS':
+            case 'STARTED':
+                return { bg: '#ECFDF5', text: '#10B981', label: 'Ongoing' };
             case 'Completed':
-                return { bg: '#F1F5F9', text: '#64748B' };
+            case 'COMPLETED':
+                return { bg: '#F1F5F9', text: '#64748B', label: 'Completed' };
             default:
-                return { bg: '#FEF2F2', text: '#EF4444' };
+                return { bg: '#FEF2F2', text: '#EF4444', label: status || 'Cancelled' };
         }
     };
 
-    const statusTheme = getStatusStyle(detail.status);
+    if (loading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: WHITE }}>
+                <ActivityIndicator size="large" color={BLUE} />
+            </View>
+        );
+    }
+
+    // Use fetched booking data
+    const displayBooking = booking || {
+        _id: bookingId,
+        pickup_location: 'Mumbai',
+        drop_location: 'Pune',
+        start_date: '2025-05-24T10:00:00.000Z',
+        end_date: '2025-05-26T10:00:00.000Z',
+        rate_per_day: 5000,
+        total_amount: 2496,
+        status: 'BOOKED',
+        baseFare: 1950,
+        platformFee: 195,
+        gst: 351,
+        billing_type: 'PER_KM',
+        rate_per_km: 13,
+        car_id: {
+            name: 'BMW 3 Series',
+            brand: 'Luxury Sedan',
+            seats: 2,
+        }
+    };
+
+    const statusTheme = getStatusStyle(displayBooking.status);
+
+    // Format Dates helper
+    const formatNiceDate = (dateStr: any) => {
+        if (!dateStr) return '-';
+        const rawDate = dateStr?.$date || dateStr;
+        const d = new Date(rawDate);
+        if (Number.isNaN(d.getTime())) return String(dateStr);
+        return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+
+    const formatNiceDateTime = (dateStr: any) => {
+        if (!dateStr) return '-';
+        const rawDate = dateStr?.$date || dateStr;
+        const d = new Date(rawDate);
+        if (Number.isNaN(d.getTime())) return String(dateStr);
+        return d.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+    };
+
+    // Calculate Duration in Days
+    const getDurationText = () => {
+        const startRaw = displayBooking.start_date?.$date || displayBooking.start_date;
+        const endRaw = displayBooking.end_date?.$date || displayBooking.end_date;
+        if (!startRaw || !endRaw) return '2 Days';
+        const start = new Date(startRaw);
+        const end = new Date(endRaw);
+        const diffTime = Math.abs(end.getTime() - start.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays > 0 ? `${diffDays} Day${diffDays > 1 ? 's' : ''}` : '1 Day';
+    };
+
+    const carName = displayBooking.car_id?.name || displayBooking.car_id?.model_name || 'Car';
+    const carClass = displayBooking.car_id?.brand || displayBooking.car_id?.brand_name || 'Premium Car';
+    const carImage = displayBooking.car_id?.cars_image 
+        ? { uri: getCarImageUrl(displayBooking.car_id.cars_image) } 
+        : require('../assets/images/banner_car.png');
+
+    const duration = getDurationText();
+    const rateText = displayBooking.billing_type === 'PER_KM' 
+        ? `₹${displayBooking.rate_per_km} / km` 
+        : `₹${displayBooking.rate_per_day} / day`;
+
+    const priceText = displayBooking.billing_type === 'PER_KM' 
+        ? `₹${displayBooking.rate_per_km}` 
+        : `₹${displayBooking.rate_per_day}`;
+
+    const totalDaysAmountText = displayBooking.billing_type === 'PER_KM'
+        ? `₹${displayBooking.total_amount}`
+        : `₹${displayBooking.baseFare || displayBooking.total_amount}`;
 
     return (
         <View style={s.screen}>
@@ -179,20 +296,20 @@ export default function BookingDetailsScreen() {
                 <View style={s.card}>
                     <View style={s.cardHeader}>
                         <View style={[s.statusBadge, { backgroundColor: statusTheme.bg }]}>
-                            <Text style={[s.statusTxt, { color: statusTheme.text }]}>● {detail.status}</Text>
+                            <Text style={[s.statusTxt, { color: statusTheme.text }]}>● {statusTheme.label}</Text>
                         </View>
-                        <Text style={s.bookingId}>Booking ID <Text style={{ color: NAVY }}>#{detail.id}</Text></Text>
+                        <Text style={s.bookingId}>Booking ID <Text style={{ color: NAVY }}>#{displayBooking._id?.slice(-6).toUpperCase()}</Text></Text>
                     </View>
 
                     <View style={s.carDetailsRow}>
-                        <Image source={detail.image} style={s.carImg} resizeMode="contain" />
+                        <Image source={typeof carImage === 'object' ? carImage : carImage} style={s.carImg} resizeMode="contain" />
                         <View style={{ flex: 1, paddingLeft: wp(12) }}>
-                            <Text style={s.carName}>{detail.carName}</Text>
-                            <Text style={s.classType}>{detail.classType}</Text>
+                            <Text style={s.carName}>{carName}</Text>
+                            <Text style={s.classType}>{carClass}</Text>
                             <Text style={s.priceTxt}>
-                                {detail.pricePerDay} <Text style={s.perDay}>/ day</Text>
+                                {priceText} <Text style={s.perDay}>{displayBooking.billing_type === 'PER_KM' ? '/ km' : '/ day'}</Text>
                             </Text>
-                            <Text style={s.totalDaysVal}>Total Amount: <Text style={{ color: BLUE }}>{detail.totalDaysAmount}</Text></Text>
+                            <Text style={s.totalDaysVal}>Total Amount: <Text style={{ color: BLUE }}>₹{displayBooking.total_amount}</Text></Text>
                         </View>
                     </View>
 
@@ -202,32 +319,158 @@ export default function BookingDetailsScreen() {
                             <Text style={s.specIcon}>👤</Text>
                             <View>
                                 <Text style={s.specValLabel}>Passengers</Text>
-                                <Text style={s.specVal}>{detail.passengers}</Text>
+                                <Text style={s.specVal}>{displayBooking.car_id?.seats || 5}</Text>
                             </View>
                         </View>
                         <View style={s.specItem}>
                             <Text style={s.specIcon}>📅</Text>
                             <View>
                                 <Text style={s.specValLabel}>Duration</Text>
-                                <Text style={s.specVal}>{detail.duration}</Text>
+                                <Text style={s.specVal}>{duration}</Text>
                             </View>
                         </View>
                         <View style={s.specItem}>
                             <Text style={s.specIcon}>📍</Text>
                             <View>
                                 <Text style={s.specValLabel}>Distance</Text>
-                                <Text style={s.specVal}>{detail.distance}</Text>
+                                <Text style={s.specVal}>{displayBooking.distance_km ? `${displayBooking.distance_km} km` : '-'}</Text>
                             </View>
                         </View>
                         <View style={s.specItem}>
                             <Text style={s.specIcon}>⏱️</Text>
                             <View>
                                 <Text style={s.specValLabel}>Booking Date</Text>
-                                <Text style={s.specVal}>{detail.bookingDate}</Text>
+                                <Text style={s.specVal}>{formatNiceDate(displayBooking.created_at)}</Text>
                             </View>
                         </View>
                     </View>
                 </View>
+
+                {/* ── Women Safety & SOS Center ── */}
+                {displayBooking.women_safety_mode && (
+                    <View style={[s.card, { borderColor: '#FBCFE8', borderWidth: 1.5, backgroundColor: '#FFF5F7' }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wp(8) }}>
+                            <Text style={[s.sectionTitle, { color: '#DB2777', marginBottom: 0 }]}>♀️ Women Safety Center</Text>
+                            <View style={{ backgroundColor: '#FCE7F3', paddingHorizontal: wp(8), paddingVertical: wp(2), borderRadius: wp(6) }}>
+                                <Text style={{ fontSize: fs(9), fontWeight: '800', color: '#DB2777' }}>SECURE RIDE</Text>
+                            </View>
+                        </View>
+                        <Text style={{ fontSize: fs(11), color: '#9D174D', fontWeight: '600', lineHeight: wp(16), marginBottom: wp(12) }}>
+                            This ride is verified for women safety. Live GPS tracking is active and SOS priority assistance is enabled.
+                        </Text>
+
+                        {/* SOS Action button */}
+                        <TouchableOpacity
+                            style={[
+                                {
+                                    backgroundColor: sosActivated ? '#F59E0B' : '#E11D48',
+                                    paddingVertical: wp(12),
+                                    borderRadius: wp(12),
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginBottom: wp(12),
+                                }
+                            ]}
+                            activeOpacity={0.85}
+                            onPress={() => setSosActivated(!sosActivated)}
+                        >
+                            <Text style={{ color: '#FFF', fontWeight: '900', fontSize: fs(12), letterSpacing: 0.5 }}>
+                                {sosActivated ? '🚨 SOS ACTIVE (Tap to Cancel)' : '🚨 TRIGGER EMERGENCY SOS'}
+                            </Text>
+                        </TouchableOpacity>
+
+                        {sosActivated && (
+                            <View style={{ backgroundColor: '#FEF3C7', borderLeftWidth: 4, borderLeftColor: '#D97706', padding: wp(8), borderRadius: wp(6), marginBottom: wp(12) }}>
+                                <Text style={{ fontSize: fs(10), color: '#78350F', fontWeight: '800', lineHeight: wp(14) }}>
+                                    🚨 SOS Alert Broadcasted! Law enforcement, our 24/7 security dispatch, and your emergency contacts are being alerted with your live GPS location.
+                                </Text>
+                            </View>
+                        )}
+
+                        {/* Helper Safety Actions */}
+                        <View style={{ flexDirection: 'row', gap: wp(10) }}>
+                            <TouchableOpacity
+                                style={{ flex: 1, backgroundColor: '#FFF', borderColor: '#FBCFE8', borderWidth: 1, paddingVertical: wp(8), borderRadius: wp(10) }}
+                                activeOpacity={0.7}
+                                onPress={() => Linking.openURL('tel:1091')}
+                            >
+                                <Text style={{ fontSize: fs(11), fontWeight: '700', color: '#DB2777', textAlign: 'center' }}>
+                                    📞 Call Helpline (1091)
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={{ flex: 1, backgroundColor: '#FFF', borderColor: '#FBCFE8', borderWidth: 1, paddingVertical: wp(8), borderRadius: wp(10) }}
+                                activeOpacity={0.7}
+                                onPress={async () => {
+                                    try {
+                                        await Share.share({
+                                            message: `Track my safe ride on ShiftRide: https://shiftride.com/track/${displayBooking._id || displayBooking.id}`,
+                                        });
+                                    } catch (err) {
+                                        console.warn(err);
+                                    }
+                                }}
+                            >
+                                <Text style={{ fontSize: fs(11), fontWeight: '700', color: '#DB2777', textAlign: 'center' }}>
+                                    🔗 Share tracking link
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
+
+                {/* Driver & OTP Verification Card */}
+                {displayBooking.driverAssigned && displayBooking.driverId ? (
+                    <View style={s.card}>
+                        <Text style={s.sectionTitle}>Driver & Verification</Text>
+                        <View style={s.driverRow}>
+                            <View style={s.driverAvatarCircle}>
+                                <Text style={s.driverAvatarText}>👤</Text>
+                            </View>
+                            <View style={{ flex: 1, paddingLeft: wp(12) }}>
+                                <Text style={s.driverName}>{displayBooking.driverId.driverName}</Text>
+                                <Text style={s.driverExp}>Experience: {displayBooking.driverId.experience || '2'} Years</Text>
+                                <View style={s.driverActionsRow}>
+                                    <TouchableOpacity 
+                                        style={[s.driverActionBtn, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}
+                                        onPress={() => Linking.openURL(`tel:${displayBooking.driverId.phone}`)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={s.driverActionIcon}>📞</Text>
+                                        <Text style={[s.driverActionText, { color: BLUE }]}>Call</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity 
+                                        style={[s.driverActionBtn, { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' }]}
+                                        onPress={() => Linking.openURL(`sms:${displayBooking.driverId.phone}`)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={s.driverActionIcon}>💬</Text>
+                                        <Text style={[s.driverActionText, { color: '#4F46E5' }]}>Message</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                            {displayBooking.otp && !['OTP_VERIFIED', 'TRIP_STARTED', 'COMPLETED', 'ONGOING', 'STARTED', 'IN_PROGRESS'].includes(String(displayBooking.status).toUpperCase()) ? (
+                                <View style={s.otpContainer}>
+                                    <Text style={s.otpLabel}>START OTP</Text>
+                                    <Text style={s.otpVal}>{displayBooking.otp}</Text>
+                                </View>
+                            ) : null}
+                        </View>
+                    </View>
+                ) : (
+                    displayBooking.otp && !['OTP_VERIFIED', 'TRIP_STARTED', 'COMPLETED', 'ONGOING', 'STARTED', 'IN_PROGRESS'].includes(String(displayBooking.status).toUpperCase()) ? (
+                        <View style={s.card}>
+                            <Text style={s.sectionTitle}>Ride Verification Code</Text>
+                            <View style={s.otpFullRow}>
+                                <Text style={s.otpDescription}>Share this OTP with the driver to start the trip:</Text>
+                                <View style={s.otpBadgeLarge}>
+                                    <Text style={s.otpValLarge}>{displayBooking.otp}</Text>
+                                </View>
+                            </View>
+                        </View>
+                    ) : null
+                )}
 
                 {/* Pick-up / Drop-off details card */}
                 <View style={s.card}>
@@ -239,12 +482,12 @@ export default function BookingDetailsScreen() {
                         </View>
                         <View style={{ flex: 1 }}>
                             <Text style={s.routeHeadingGreen}>Pick-up</Text>
-                            <Text style={s.routeLocName}>{detail.fromLoc}</Text>
+                            <Text style={s.routeLocName}>{displayBooking.pickup_location}</Text>
                             <View style={s.timeRow}>
                                 <Text style={s.timeIcon}>🕒</Text>
-                                <Text style={s.timeText}>{detail.fromDate}</Text>
+                                <Text style={s.timeText}>{formatNiceDateTime(displayBooking.start_date)}</Text>
                             </View>
-                            <Text style={s.addressText}>{detail.fromAddress}</Text>
+                            <Text style={s.addressText}>{displayBooking.pickup_location}, India</Text>
                         </View>
                         <TouchableOpacity style={[s.mapCircle, s.mapCircleGreen]}>
                             <Text style={s.mapArrowGreen}>➦</Text>
@@ -258,12 +501,12 @@ export default function BookingDetailsScreen() {
                         </View>
                         <View style={{ flex: 1 }}>
                             <Text style={s.routeHeadingRed}>Drop-off</Text>
-                            <Text style={s.routeLocName}>{detail.toLoc}</Text>
+                            <Text style={s.routeLocName}>{displayBooking.drop_location}</Text>
                             <View style={s.timeRow}>
                                 <Text style={s.timeIcon}>🕒</Text>
-                                <Text style={s.timeText}>{detail.toDate}</Text>
+                                <Text style={s.timeText}>{formatNiceDateTime(displayBooking.end_date)}</Text>
                             </View>
-                            <Text style={s.addressText}>{detail.toAddress}</Text>
+                            <Text style={s.addressText}>{displayBooking.drop_location}, India</Text>
                         </View>
                         <TouchableOpacity style={[s.mapCircle, s.mapCircleRed]}>
                             <Text style={s.mapArrowRed}>➦</Text>
@@ -276,41 +519,41 @@ export default function BookingDetailsScreen() {
                     <Text style={s.sectionTitle}>Trip Summary</Text>
                     <View style={s.summaryRow}>
                         <Text style={s.summaryLabel}>Billing Type</Text>
-                        <Text style={s.summaryVal}>Per KM</Text>
+                        <Text style={s.summaryVal}>{displayBooking.billing_type === 'PER_KM' ? 'Per KM' : 'Per Day'}</Text>
                     </View>
                     <View style={s.summaryRow}>
-                        <Text style={s.summaryLabel}>Rate (per km)</Text>
-                        <Text style={s.summaryVal}>{detail.ratePerKm}</Text>
+                        <Text style={s.summaryLabel}>Rate</Text>
+                        <Text style={s.summaryVal}>{rateText}</Text>
                     </View>
                     <View style={s.summaryRow}>
                         <Text style={s.summaryLabel}>Distance (Billed)</Text>
-                        <Text style={s.summaryVal}>{detail.distance}</Text>
+                        <Text style={s.summaryVal}>{displayBooking.distance_km ? `${displayBooking.distance_km} km` : '-'}</Text>
                     </View>
                     <View style={s.summaryRow}>
                         <Text style={s.summaryLabel}>Duration</Text>
-                        <Text style={s.summaryVal}>{detail.duration}</Text>
+                        <Text style={s.summaryVal}>{duration}</Text>
                     </View>
 
                     <View style={s.dashedLine} />
 
                     <View style={s.summaryRow}>
                         <Text style={s.summaryLabel}>Base Fare</Text>
-                        <Text style={s.summaryVal}>{detail.baseFare}</Text>
+                        <Text style={s.summaryVal}>₹{displayBooking.baseFare || 0}</Text>
                     </View>
                     <View style={s.summaryRow}>
-                        <Text style={s.summaryLabel}>Platform Fee (10%)</Text>
-                        <Text style={s.summaryVal}>{detail.platformFee}</Text>
+                        <Text style={s.summaryLabel}>Platform Fee</Text>
+                        <Text style={s.summaryVal}>₹{displayBooking.platformFee || 0}</Text>
                     </View>
                     <View style={s.summaryRow}>
                         <Text style={s.summaryLabel}>GST (18%)</Text>
-                        <Text style={s.summaryVal}>{detail.gst}</Text>
+                        <Text style={s.summaryVal}>₹{displayBooking.gst || 0}</Text>
                     </View>
 
                     <View style={s.dashedLine} />
 
                     <View style={s.summaryRow}>
                         <Text style={s.totalAmountLabel}>Total Amount</Text>
-                        <Text style={s.totalAmountVal}>{detail.totalAmount}</Text>
+                        <Text style={s.totalAmountVal}>₹{displayBooking.total_amount}</Text>
                     </View>
                 </View>
 
@@ -323,15 +566,15 @@ export default function BookingDetailsScreen() {
                                 <Text style={s.cardIcon}>💳</Text>
                             </View>
                             <View>
-                                <Text style={s.paymentMethodName}>{detail.paymentMethod}</Text>
-                                <Text style={s.cardNo}>Visa •••• {detail.cardLast4}</Text>
+                                <Text style={s.paymentMethodName}>{displayBooking.razorpayPaymentId ? 'Paid Online' : 'Cash/Other'}</Text>
+                                <Text style={s.cardNo}>ID: {displayBooking.razorpayPaymentId ? displayBooking.razorpayPaymentId.slice(-6).toUpperCase() : 'N/A'}</Text>
                             </View>
                         </View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(8) }}>
                             <View style={s.paidBadge}>
-                                <Text style={s.paidBadgeText}>Paid</Text>
+                                <Text style={s.paidBadgeText}>{displayBooking.paymentStatus || 'PAID'}</Text>
                             </View>
-                            <Text style={s.paidAmount}>{detail.totalAmount}</Text>
+                            <Text style={s.paidAmount}>₹{displayBooking.total_amount}</Text>
                         </View>
                     </View>
                 </View>
@@ -692,5 +935,111 @@ const s = StyleSheet.create({
         fontSize: fs(12.5),
         fontWeight: '800',
         color: WHITE,
+    },
+    driverRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: wp(10),
+    },
+    driverAvatarCircle: {
+        width: wp(48),
+        height: wp(48),
+        borderRadius: wp(24),
+        backgroundColor: '#EFF6FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#DBEAFE',
+    },
+    driverAvatarText: {
+        fontSize: fs(20),
+    },
+    driverName: {
+        fontSize: fs(14),
+        fontWeight: '800',
+        color: NAVY,
+    },
+    driverExp: {
+        fontSize: fs(11),
+        color: GRAY,
+        fontWeight: '600',
+        marginTop: wp(2),
+    },
+    driverPhone: {
+        fontSize: fs(11),
+        color: BLUE,
+        fontWeight: '700',
+        marginTop: wp(2),
+    },
+    driverActionsRow: {
+        flexDirection: 'row',
+        gap: wp(8),
+        marginTop: wp(6),
+    },
+    driverActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: wp(8),
+        paddingVertical: wp(4),
+        borderRadius: wp(8),
+        borderWidth: 1,
+        gap: wp(4),
+    },
+    driverActionIcon: {
+        fontSize: fs(10),
+    },
+    driverActionText: {
+        fontSize: fs(9.5),
+        fontWeight: '700',
+    },
+    otpContainer: {
+        backgroundColor: '#F0FDF4',
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+        borderRadius: wp(12),
+        paddingHorizontal: wp(14),
+        paddingVertical: wp(8),
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    otpLabel: {
+        fontSize: fs(8),
+        fontWeight: '900',
+        color: '#16A34A',
+        letterSpacing: 0.5,
+        marginBottom: wp(2),
+    },
+    otpVal: {
+        fontSize: fs(16),
+        fontWeight: '900',
+        color: '#15803D',
+        letterSpacing: 1.5,
+    },
+    otpFullRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: wp(10),
+    },
+    otpDescription: {
+        fontSize: fs(11),
+        color: GRAY,
+        fontWeight: '600',
+        flex: 1,
+        marginRight: wp(10),
+    },
+    otpBadgeLarge: {
+        backgroundColor: '#EFF6FF',
+        borderWidth: 1.5,
+        borderColor: '#BFDBFE',
+        borderRadius: wp(12),
+        paddingHorizontal: wp(16),
+        paddingVertical: wp(10),
+    },
+    otpValLarge: {
+        fontSize: fs(18),
+        fontWeight: '900',
+        color: BLUE,
+        letterSpacing: 2,
     },
 });

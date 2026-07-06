@@ -25,6 +25,7 @@ const bookingSchema = new mongoose.Schema({
   transferStatus: { type: String, enum: ["PENDING", "SUCCESS", "FAILED"], default: "PENDING", trim: true },
   booking_mode: { type: String, enum: ["RENTAL", "TRANSFER"], default: "RENTAL" },
   billing_type: { type: String, enum: ["PER_DAY", "PER_KM"], default: "PER_DAY" },
+  bookingSource: { type: String, enum: ["APP", "WEBSITE"], default: "WEBSITE", uppercase: true, trim: true },
   start_time: { type: String, default: null },
   driverId: { type: mongoose.Schema.Types.ObjectId, ref: "Driver", default: null },
   driverAssigned: { type: Boolean, default: false },

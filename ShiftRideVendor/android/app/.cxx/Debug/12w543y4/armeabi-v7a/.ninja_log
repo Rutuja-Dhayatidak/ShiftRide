@@ -1,0 +1,14 @@
+# ninja log v5
+7	87	0	C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/CMakeFiles/cmake.verify_globs	573fb8b86fcd87b5
+107	11899	8050174189089457	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/bd6f460d80466df4540d1ecdb77a3c1d/codegen/jni/react/renderer/components/safeareacontext/States.cpp.o	89e9f5236222bfc5
+80	14980	8050174219665692	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/54bf1ded53e852e467beb215ac92675e/jni/react/renderer/components/safeareacontext/EventEmitters.cpp.o	b109eecd28b17f77
+120	15520	8050174225290934	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/a5960596bee47a965e0f16c912992cfb/build/generated/source/codegen/jni/safeareacontext-generated.cpp.o	1d194fe897639302
+15	17715	8050174247251884	CMakeFiles/appmodules.dir/OnLoad.cpp.o	5d64081905c3a2d0
+40	19493	8050174264926940	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/5e00005e8e763cab7a40b64faedf9106/renderer/components/safeareacontext/RNCSafeAreaViewState.cpp.o	7959259b7c9e8e75
+93	19899	8050174269293049	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/54bf1ded53e852e467beb215ac92675e/jni/react/renderer/components/safeareacontext/ShadowNodes.cpp.o	daed457bcc25ad3f
+53	21402	8050174284144979	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/bd6f460d80466df4540d1ecdb77a3c1d/codegen/jni/react/renderer/components/safeareacontext/Props.cpp.o	76e594f1d868bba8
+68	22759	8050174297689492	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/e6cf89690194ae86d851a438f4e381fd/renderer/components/safeareacontext/ComponentDescriptors.cpp.o	ab822ffd7d923cd8
+2	23396	8050174303944386	CMakeFiles/appmodules.dir/C_/carApp/ShiftRideVendor/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	476cc9e455a2d59b
+28	23774	8050174307913486	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/5e00005e8e763cab7a40b64faedf9106/renderer/components/safeareacontext/RNCSafeAreaViewShadowNode.cpp.o	c112e60bdced1131
+23775	24037	8050174310698513	C:/carApp/ShiftRideVendor/android/app/build/intermediates/cxx/Debug/12w543y4/obj/armeabi-v7a/libreact_codegen_safeareacontext.so	c8c70e5733d6b82f
+24038	24224	8050174312705160	C:/carApp/ShiftRideVendor/android/app/build/intermediates/cxx/Debug/12w543y4/obj/armeabi-v7a/libappmodules.so	15f168043fe13737

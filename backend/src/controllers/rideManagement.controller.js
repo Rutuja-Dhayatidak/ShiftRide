@@ -9,7 +9,7 @@ exports.getAssignedBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({
       driverId: req.user.id,
-      bookingStatus: { $in: ["DRIVER_ASSIGNED", "DRIVER_ACCEPTED", "DRIVER_ARRIVING", "OTP_VERIFIED", "TRIP_STARTED"] }
+      bookingStatus: { $in: ["FORWARDED_TO_DRIVER", "DRIVER_ASSIGNED", "DRIVER_ACCEPTED", "DRIVER_ARRIVING", "OTP_VERIFIED", "TRIP_STARTED"] }
     })
       .populate({ path: "user_id", select: "name phone email" })
       .populate({ path: "car_id", select: "name brand cars_image license_plate" })
@@ -60,7 +60,7 @@ exports.acceptRide = async (req, res) => {
       return res.status(404).json({ message: "Booking not found or not assigned to you" });
     }
 
-    if (booking.bookingStatus !== "DRIVER_ASSIGNED") {
+    if (booking.bookingStatus !== "FORWARDED_TO_DRIVER") {
       return res.status(400).json({ message: `Cannot accept booking in ${booking.bookingStatus} status` });
     }
 
@@ -96,8 +96,8 @@ exports.rejectRide = async (req, res) => {
       return res.status(404).json({ message: "Booking not found or not assigned to you" });
     }
 
-    if (booking.bookingStatus !== "DRIVER_ASSIGNED") {
-      return res.status(400).json({ message: "Can only reject ride when driver_assigned" });
+    if (booking.bookingStatus !== "FORWARDED_TO_DRIVER") {
+      return res.status(400).json({ message: "Can only reject ride when forwarded to driver" });
     }
 
     booking.bookingStatus = "DRIVER_REJECTED";

@@ -571,7 +571,10 @@ export default function CarDetailsScreen() {
                                 ]
                             );
                         } else {
-                            navigation.navigate('Billing', { carId: car.id });
+                            navigation.navigate('Billing', { 
+                                carId: car.id,
+                                womenSafety: route.params?.womenSafety || false
+                            });
                         }
                     }}
                 >

@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getSessionUser } from '../services/auth';
+import Geolocation from '@react-native-community/geolocation';
 import {
     View,
     Text,
@@ -10,6 +12,8 @@ import {
     Dimensions,
     PixelRatio,
     Alert,
+    PermissionsAndroid,
+    Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -37,17 +41,139 @@ export default function BillingScreen() {
     const [name, setName] = useState('');
     const [address, setAddress] = useState('');
     const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
     const [country, setCountry] = useState('');
     const [gender, setGender] = useState('');
+    const [loadingLoc, setLoadingLoc] = useState(false);
+
+    useEffect(() => {
+        const user = getSessionUser();
+        if (user) {
+            if (user.name) setName(user.name);
+            if (user.email) setEmail(user.email);
+            if (user.phone) setPhone(user.phone);
+            if (user.address) setAddress(user.address);
+            if (user.country) setCountry(user.country);
+            if (user.gender) setGender(user.gender);
+        }
+    }, []);
+
+    const requestLocationPermission = async () => {
+        if (Platform.OS === 'android') {
+            try {
+                const granted = await PermissionsAndroid.request(
+                    PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+                    {
+                        title: 'Location Permission',
+                        message: 'ShiftRide needs access to your location to auto-fill your address.',
+                        buttonNeutral: 'Ask Me Later',
+                        buttonNegative: 'Cancel',
+                        buttonPositive: 'OK',
+                    }
+                );
+                return granted === PermissionsAndroid.RESULTS.GRANTED;
+            } catch (err) {
+                console.warn(err);
+                return false;
+            }
+        }
+        return true;
+    };
+
+    const fetchCurrentLocation = async () => {
+        setLoadingLoc(true);
+        try {
+            const hasPermission = await requestLocationPermission();
+            if (!hasPermission) {
+                console.warn('Location permission denied, using IP fallback');
+                await fetchIPLocation();
+                return;
+            }
+
+            Geolocation.getCurrentPosition(
+                async (position: any) => {
+                    try {
+                        const { latitude, longitude } = position.coords;
+                        const response = await fetch(
+                            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+                            {
+                                headers: {
+                                    'User-Agent': 'ShiftRide-App'
+                                }
+                            }
+                        );
+                        const data = await response.json();
+                        if (data && data.display_name) {
+                            setAddress(data.display_name);
+                            if (data.address && data.address.country) {
+                                setCountry(data.address.country);
+                            }
+                            setLoadingLoc(false);
+                            return;
+                        }
+                    } catch (gpsError) {
+                        console.warn('GPS Reverse geocode failed, falling back to IP:', gpsError);
+                    }
+                    await fetchIPLocation();
+                },
+                async (error: any) => {
+                    console.warn('GPS location failed/denied, falling back to IP:', error);
+                    await fetchIPLocation();
+                },
+                { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
+            );
+        } catch (error) {
+            console.warn('Location fetching error, using fallback:', error);
+            setAddress('MG Road, Pune, Maharashtra, India');
+            setLoadingLoc(false);
+        }
+    };
+
+    const fetchIPLocation = async () => {
+        try {
+            const response = await fetch('https://ipwho.is/');
+            const text = await response.text();
+            if (text.trim().startsWith('{')) {
+                const data = JSON.parse(text);
+                if (data && data.success && data.city) {
+                    const fetchedAddress = `${data.city}, ${data.region}, ${data.country}`;
+                    setAddress(fetchedAddress);
+                    if (data.country) {
+                        setCountry(data.country);
+                    }
+                } else {
+                    const res2 = await fetch('https://ipapi.co/json/');
+                    const text2 = await res2.text();
+                    if (text2.trim().startsWith('{')) {
+                        const data2 = JSON.parse(text2);
+                        if (data2 && data2.city) {
+                            setAddress(`${data2.city}, ${data2.region}, ${data2.country_name}`);
+                            if (data2.country_name) setCountry(data2.country_name);
+                            return;
+                        }
+                    }
+                    setAddress('MG Road, Pune, Maharashtra, India');
+                }
+            } else {
+                setAddress('MG Road, Pune, Maharashtra, India');
+            }
+        } catch (ipError) {
+            console.warn('IP location failed:', ipError);
+            setAddress('MG Road, Pune, Maharashtra, India');
+        } finally {
+            setLoadingLoc(false);
+        }
+    };
 
     const handleContinue = () => {
-        if (!name || !address || !email) {
-            Alert.alert('Required Fields', 'Please fill in Name, Address, and Email Address.');
+        if (!name || !address || !email || !phone) {
+            Alert.alert('Required Fields', 'Please fill in Name, Address, Email, and Phone Number.');
             return;
         }
         navigation.navigate('Payment', {
             carId,
-            billingData: { name, address, email, country: country || 'India', gender: gender || 'Male' }
+            billingData: { name, address, email, phone, country: country || 'India', gender: gender || 'Male' },
+            womenSafety: route.params?.womenSafety || false,
         });
     };
 
@@ -104,15 +230,25 @@ export default function BillingScreen() {
                     </View>
 
                     <Text style={s.fieldLabel}>Address</Text>
-                    <View style={s.inputContainer}>
+                    <View style={[s.inputContainer, { paddingRight: wp(8) }]}>
                         <Text style={s.inputIcon}>📍</Text>
                         <TextInput
-                            style={s.inputField}
+                            style={[s.inputField, { flex: 1 }]}
                             placeholder="Address"
                             placeholderTextColor="#94A3B8"
                             value={address}
                             onChangeText={setAddress}
                         />
+                        <TouchableOpacity 
+                            style={s.locationButton} 
+                            onPress={fetchCurrentLocation}
+                            disabled={loadingLoc}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={s.locationBtnTxt}>
+                                {loadingLoc ? 'Fetching...' : '🎯 Auto Get'}
+                            </Text>
+                        </TouchableOpacity>
                     </View>
 
                     <Text style={s.fieldLabel}>Email Address</Text>
@@ -126,6 +262,19 @@ export default function BillingScreen() {
                             autoCapitalize="none"
                             value={email}
                             onChangeText={setEmail}
+                        />
+                    </View>
+
+                    <Text style={s.fieldLabel}>Phone Number</Text>
+                    <View style={s.inputContainer}>
+                        <Text style={s.inputIcon}>📞</Text>
+                        <TextInput
+                            style={s.inputField}
+                            placeholder="Enter phone number"
+                            placeholderTextColor="#94A3B8"
+                            keyboardType="phone-pad"
+                            value={phone}
+                            onChangeText={setPhone}
                         />
                     </View>
 
@@ -367,5 +516,18 @@ const s = StyleSheet.create({
         fontSize: fs(14),
         fontWeight: '800',
         color: WHITE,
+    },
+    locationButton: {
+        backgroundColor: '#EFF6FF',
+        paddingHorizontal: wp(10),
+        paddingVertical: wp(6),
+        borderRadius: wp(8),
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+    },
+    locationBtnTxt: {
+        color: BLUE,
+        fontSize: fs(10),
+        fontWeight: '700',
     },
 });

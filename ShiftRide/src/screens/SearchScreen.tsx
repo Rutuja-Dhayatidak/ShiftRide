@@ -12,14 +12,19 @@ import {
     Switch,
     Image,
     Animated,
+    Alert,
+    ActivityIndicator,
+    Linking,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { BottomNavigation } from '../components/bottomnavigation';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { getAllCars } from '../services/Car';
-import { getCarImageUrl } from '../services/api';
+import api, { getCarImageUrl } from '../services/api';
+import { initiatePaymentForBooking, verifyPayment } from '../services/payment';
+import RazorpayCheckout from 'react-native-razorpay';
 
 const { width, height } = Dimensions.get('window');
 const BASE_W = 375;
@@ -106,6 +111,10 @@ const SearchScreen = () => {
     const navigation = useNavigation<NavigationProp>();
     const [fromLoc, setFromLoc] = useState('');
     const [toLoc, setToLoc] = useState('');
+    const [fromError, setFromError] = useState(false);
+    const [toError, setToError] = useState(false);
+    const [validationError, setValidationError] = useState<string | null>(null);
+    const [activeBooking, setActiveBooking] = useState<any>(null);
     const [date, setDate] = useState('19, Dec 2022');
     const [dayOfWeek, setDayOfWeek] = useState('Sabtu');
     const [time, setTime] = useState('10:00 AM');
@@ -114,10 +123,85 @@ const SearchScreen = () => {
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [dateVal, setDateVal] = useState(new Date());
     const [timeVal, setTimeVal] = useState(new Date());
-    const [isReturn, setIsReturn] = useState(false);
-    const [activeTab, setActiveTab] = useState(0); // Default to Orders/Search Tab
-    const [selectedVehicle, setSelectedVehicle] = useState('Mobil'); // Active vehicle state
+    const [womenSafety, setWomenSafety] = useState(false);
+    const [activeTab, setActiveTab] = useState(0);
+    const [selectedVehicle, setSelectedVehicle] = useState('Mobil');
     const [popularCars, setPopularCars] = useState<any[]>(POPULAR_CARS);
+
+    const [isOtpVerified, setIsOtpVerified] = useState(false);
+    const successScale = useRef(new Animated.Value(0)).current;
+    const cardOpacity = useRef(new Animated.Value(1)).current;
+    const activeBookingRef = useRef<any>(null);
+
+    const [paymentLoading, setPaymentLoading] = useState(false);
+
+    const handlePayNow = async (booking: any) => {
+        try {
+            setPaymentLoading(true);
+            const bookingId = booking.id || booking._id;
+            const res = await initiatePaymentForBooking(bookingId);
+            
+            if (res && res.razorpayOrderId) {
+                const options = {
+                    description: `Payment for booking ${bookingId}`,
+                    image: 'https://i.imgur.com/3g7nmJC.png',
+                    currency: 'INR',
+                    key: res.keyId || 'rzp_test_SNw35MkokY8h1y',
+                    amount: Math.round(res.pricing.totalAmount * 100),
+                    name: 'ShiftRide',
+                    order_id: res.razorpayOrderId,
+                    prefill: {
+                        email: booking.customerInfo?.email || 'customer@shiftride.com',
+                        contact: booking.customerInfo?.phone || '9999999999',
+                        name: booking.customerInfo?.name || 'Customer'
+                    },
+                    theme: { color: '#1A6BFF' }
+                };
+
+                setPaymentLoading(false);
+
+                RazorpayCheckout.open(options).then(async (data: any) => {
+                    try {
+                        setPaymentLoading(true);
+                        const verifyRes = await verifyPayment({
+                            booking_id: bookingId,
+                            razorpay_order_id: data.razorpay_order_id,
+                            razorpay_payment_id: data.razorpay_payment_id,
+                            razorpay_signature: data.razorpay_signature
+                        });
+
+                        if (verifyRes) {
+                            Alert.alert('Payment Successful', 'Your booking is confirmed!');
+                            if (activeBookingRef.current) {
+                                activeBookingRef.current = {
+                                    ...activeBookingRef.current,
+                                    bookingStatus: 'CONFIRMED',
+                                    paymentStatus: 'PAID'
+                                };
+                                setActiveBooking({
+                                    ...activeBookingRef.current
+                                });
+                            }
+                        }
+                    } catch (verifyErr: any) {
+                        const msg = verifyErr.response?.data?.message || verifyErr.message || 'Payment verification failed';
+                        Alert.alert('Verification Error', msg);
+                    } finally {
+                        setPaymentLoading(false);
+                    }
+                }).catch((checkoutErr: any) => {
+                    Alert.alert('Payment Cancelled', `Checkout cancelled or failed.`);
+                    setPaymentLoading(false);
+                });
+            } else {
+                throw new Error("Failed to create payment order");
+            }
+        } catch (err: any) {
+            const msg = err.response?.data?.message || err.message || 'Failed to initiate payment';
+            Alert.alert('Payment Error', msg);
+            setPaymentLoading(false);
+        }
+    };
 
     const headerFade = useRef(new Animated.Value(0)).current;
     const headerSlide = useRef(new Animated.Value(-30)).current;
@@ -179,6 +263,83 @@ const SearchScreen = () => {
         fetchPopularCars();
     }, []);
 
+    useFocusEffect(
+        React.useCallback(() => {
+            const fetchActiveBooking = async () => {
+                try {
+                    const response = await api.get('/bookings/mybookings');
+                    if (response && Array.isArray(response.data) && response.data.length > 0) {
+                        const active = response.data.find((b: any) => {
+                            const status = String(b.status || '').toUpperCase();
+                            const activeStatuses = [
+                                'BOOKED', 'CONFIRMED', 'ONGOING', 'IN_PROGRESS', 'STARTED',
+                                'DRIVER_ASSIGNED', 'DRIVER_ACCEPTED', 'DRIVER_ARRIVING',
+                                'OTP_VERIFIED', 'TRIP_STARTED', 'REQUESTED', 'FORWARDED_TO_DRIVER'
+                            ];
+                            return activeStatuses.includes(status);
+                        });
+
+                        if (active) {
+                            const newStatus = String(active.status || '').toUpperCase();
+                            const oldStatus = activeBookingRef.current ? String(activeBookingRef.current.status || '').toUpperCase() : '';
+
+                            const isFinished = newStatus === 'OTP_VERIFIED' || newStatus === 'TRIP_STARTED';
+                            const wasNotFinished = oldStatus !== 'OTP_VERIFIED' && oldStatus !== 'TRIP_STARTED';
+
+                            if (activeBookingRef.current && isFinished && wasNotFinished) {
+                                // Update ref immediately to prevent double triggers
+                                activeBookingRef.current = active;
+
+                                setIsOtpVerified(true);
+                                Animated.spring(successScale, {
+                                    toValue: 1,
+                                    useNativeDriver: true,
+                                    tension: 50,
+                                    friction: 4,
+                                }).start(() => {
+                                    setTimeout(() => {
+                                        Animated.timing(cardOpacity, {
+                                            toValue: 0,
+                                            duration: 350,
+                                            useNativeDriver: true,
+                                        }).start(() => {
+                                            setActiveBooking(null);
+                                            activeBookingRef.current = null;
+                                            setIsOtpVerified(false);
+                                            successScale.setValue(0);
+                                            cardOpacity.setValue(1);
+                                        });
+                                    }, 1000); // 1 Second timeout as requested by user
+                                });
+                            } else if (isFinished) {
+                                // If already finished, keep it cleared/hidden from search screen
+                                setActiveBooking(null);
+                                activeBookingRef.current = null;
+                            } else {
+                                setActiveBooking(active);
+                                activeBookingRef.current = active;
+                            }
+                        } else {
+                            setActiveBooking(null);
+                            activeBookingRef.current = null;
+                        }
+                    } else {
+                        setActiveBooking(null);
+                        activeBookingRef.current = null;
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch active booking for home screen:", err);
+                }
+            };
+            fetchActiveBooking();
+
+            // Set up silent polling every 2 seconds to catch driver acceptance or OTP verification instantly
+            const intervalId = setInterval(fetchActiveBooking, 2000);
+
+            return () => clearInterval(intervalId);
+        }, [successScale, cardOpacity])
+    );
+
     return (
         <View style={s.screen}>
             <StatusBar barStyle="light-content" backgroundColor={NAVY} />
@@ -206,7 +367,7 @@ const SearchScreen = () => {
                             <Text style={s.userGreeting}>Hello, Rio Ananda 👋</Text>
                             <Text style={s.userTitle}>Mau kemana{`\n`}kamu hari ini?</Text>
                             <View style={s.blueHighlightLine} />
-                           
+
                         </View>
 
                         {/* Right Column: Avatar */}
@@ -224,400 +385,641 @@ const SearchScreen = () => {
                 <Animated.View style={{ opacity: contentFade, transform: [{ translateY: contentSlide }] }}>
                     {/* ── Floating Booking Form Card ── */}
                     <View style={s.formContainer}>
-                    <View style={s.bookingCard}>
-                        {/* Unified Destination Box */}
-                        <View style={s.destinationBox}>
-                            {/* Dotted Line Connector */}
-                            <View style={s.dottedConnector}>
-                                <Text style={s.dotChar}>┆</Text>
-                            </View>
-
-                            {/* From Row */}
-                            <View style={s.destinationRow}>
-                                <View style={[s.iconWrapper, { backgroundColor: '#ECE9FE' }]}>
-                                    <Text style={[s.iconMarker, { color: '#6C63FF' }]}>📍</Text>
+                        <View style={s.bookingCard}>
+                            {/* Unified Destination Box */}
+                            <View style={s.destinationBox}>
+                                {/* Dotted Line Connector */}
+                                <View style={s.dottedConnector}>
+                                    <Text style={s.dotChar}>┆</Text>
                                 </View>
-                                <View style={s.destTextCol}>
-                                    <Text style={[s.destLabel, { color: '#6C63FF' }]}>FROM</Text>
-                                    <TextInput
-                                        style={[s.destTitle, { padding: 0 }]}
-                                        value={fromLoc}
-                                        onChangeText={setFromLoc}
-                                        placeholder="Enter Location"
-                                        placeholderTextColor={GRAY}
-                                    />
-                                   
-                                </View>
-                            </View>
 
-                            {/* Separator Line */}
-                            <View style={s.horizontalDivider} />
+                                {/* From Row */}
+                                <View style={s.destinationRow}>
+                                    <View style={[s.iconWrapper, { backgroundColor: '#ECE9FE' }]}>
+                                        <Text style={[s.iconMarker, { color: '#6C63FF' }]}>📍</Text>
+                                    </View>
+                                    <View style={s.destTextCol}>
+                                        <Text style={[s.destLabel, { color: '#6C63FF' }]}>FROM</Text>
+                                        <TextInput
+                                            style={[s.destTitle, { padding: 0 }]}
+                                            value={fromLoc}
+                                            onChangeText={(val) => {
+                                                setFromLoc(val);
+                                                if (val.trim()) {
+                                                    setFromError(false);
+                                                    if (!toError) setValidationError(null);
+                                                }
+                                            }}
+                                            placeholder="Enter Location"
+                                            placeholderTextColor={GRAY}
+                                        />
 
-                            {/* To Row */}
-                            <View style={s.destinationRow}>
-                                <View style={[s.iconWrapper, { backgroundColor: '#E8FDF0' }]}>
-                                    <Text style={[s.iconMarker, { color: '#10B981' }]}>📍</Text>
-                                </View>
-                                <View style={s.destTextCol}>
-                                    <Text style={[s.destLabel, { color: '#10B981' }]}>TO</Text>
-                                    <TextInput
-                                        style={[s.destTitle, { padding: 0 }]}
-                                        value={toLoc}
-                                        onChangeText={setToLoc}
-                                        placeholder="Enter destination"
-                                        placeholderTextColor={GRAY}
-                                    />
-                                  
-                                </View>
-                                <Text style={s.chevronRight}>›</Text>
-                            </View>
-
-                            {/* Switch direction button */}
-                            <TouchableOpacity
-                                style={s.switchBtn}
-                                activeOpacity={0.85}
-                                onPress={() => {
-                                    const temp = fromLoc;
-                                    setFromLoc(toLoc);
-                                    setToLoc(temp);
-                                }}
-                            >
-                                <Text style={s.switchIcon}>⇅</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={{ height: wp(14) }} />
-
-                        {/* Date & Time & Return Card */}
-                        <View style={s.dateReturnCard}>
-                            <TouchableOpacity
-                                style={s.dateCol}
-                                activeOpacity={0.7}
-                                onPress={() => setShowDatePicker(true)}
-                            >
-                                <Text style={[s.inputLabel, { color: '#F97316' }]}>DATE</Text>
-                                <View style={s.inputRow}>
-                                    <View style={[s.iconWrapper, { backgroundColor: '#FFF7ED' }]}><Text style={s.inputIcon}>📅</Text></View>
-                                    <View>
-                                        <Text style={s.dateMainText}>{date}</Text>
-                                        <Text style={s.dateSubText}>{dayOfWeek}</Text>
                                     </View>
                                 </View>
-                            </TouchableOpacity>
 
-                            {/* Vertical divider */}
-                            <View style={s.verticalDivider} />
+                                {/* Separator Line */}
+                                <View style={s.horizontalDivider} />
 
-                            <TouchableOpacity
-                                style={s.dateCol}
-                                activeOpacity={0.7}
-                                onPress={() => setShowTimePicker(true)}
-                            >
-                                <Text style={[s.inputLabel, { color: '#6C63FF' }]}>TIME</Text>
-                                <View style={s.inputRow}>
-                                    <View style={[s.iconWrapper, { backgroundColor: '#ECE9FE' }]}><Text style={s.inputIcon}>🕒</Text></View>
-                                    <View>
-                                        <Text style={s.dateMainText}>{time}</Text>
-                                        <Text style={s.dateSubText}>{timeZone}</Text>
+                                {/* To Row */}
+                                <View style={s.destinationRow}>
+                                    <View style={[s.iconWrapper, { backgroundColor: '#E8FDF0' }]}>
+                                        <Text style={[s.iconMarker, { color: '#10B981' }]}>📍</Text>
                                     </View>
+                                    <View style={s.destTextCol}>
+                                        <Text style={[s.destLabel, { color: '#10B981' }]}>TO</Text>
+                                        <TextInput
+                                            style={[s.destTitle, { padding: 0 }]}
+                                            value={toLoc}
+                                            onChangeText={(val) => {
+                                                setToLoc(val);
+                                                if (val.trim()) {
+                                                    setToError(false);
+                                                    if (!fromError) setValidationError(null);
+                                                }
+                                            }}
+                                            placeholder="Enter destination"
+                                            placeholderTextColor={GRAY}
+                                        />
+
+                                    </View>
+                                    <Text style={s.chevronRight}>›</Text>
                                 </View>
-                            </TouchableOpacity>
 
-                            {/* Vertical divider */}
-                            <View style={s.verticalDivider} />
+                                {/* Switch direction button */}
+                                <TouchableOpacity
+                                    style={s.switchBtn}
+                                    activeOpacity={0.85}
+                                    onPress={() => {
+                                        const temp = fromLoc;
+                                        setFromLoc(toLoc);
+                                        setToLoc(temp);
+                                        if (toLoc.trim()) setFromError(false);
+                                        if (temp.trim()) setToError(false);
+                                        if (toLoc.trim() && temp.trim()) setValidationError(null);
+                                    }}
+                                >
+                                    <Text style={s.switchIcon}>⇅</Text>
+                                </TouchableOpacity>
+                            </View>
 
-                            <View style={s.toggleContainer}>
-                                <Text style={s.toggleLabel}>Return?</Text>
-                                <Switch
-                                    value={isReturn}
-                                    onValueChange={setIsReturn}
-                                    trackColor={{ false: '#CBD5E1', true: BLUE }}
-                                    thumbColor={WHITE}
-                                    style={{ marginVertical: wp(2) }}
+                            <View style={{ height: wp(14) }} />
+
+                            {/* Date & Time & Return Card */}
+                            <View style={s.dateReturnCard}>
+                                <TouchableOpacity
+                                    style={s.dateCol}
+                                    activeOpacity={0.7}
+                                    onPress={() => setShowDatePicker(true)}
+                                >
+                                    <Text style={[s.inputLabel, { color: '#F97316' }]}>DATE</Text>
+                                    <View style={s.inputRow}>
+                                        <View style={[s.iconWrapper, { backgroundColor: '#FFF7ED' }]}><Text style={s.inputIcon}>📅</Text></View>
+                                        <View>
+                                            <Text style={s.dateMainText}>{date}</Text>
+                                            <Text style={s.dateSubText}>{dayOfWeek}</Text>
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
+
+                                {/* Vertical divider */}
+                                <View style={s.verticalDivider} />
+
+                                <TouchableOpacity
+                                    style={s.dateCol}
+                                    activeOpacity={0.7}
+                                    onPress={() => setShowTimePicker(true)}
+                                >
+                                    <Text style={[s.inputLabel, { color: '#6C63FF' }]}>TIME</Text>
+                                    <View style={s.inputRow}>
+                                        <View style={[s.iconWrapper, { backgroundColor: '#ECE9FE' }]}><Text style={s.inputIcon}>🕒</Text></View>
+                                        <View>
+                                            <Text style={s.dateMainText}>{time}</Text>
+                                            <Text style={s.dateSubText}>{timeZone}</Text>
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
+
+                                {/* Vertical divider */}
+                                <View style={s.verticalDivider} />
+
+                                <View style={s.toggleContainer}>
+                                    <Text style={s.toggleLabel}>Women Safety?</Text>
+                                    <Switch
+                                        value={womenSafety}
+                                        onValueChange={setWomenSafety}
+                                        trackColor={{ false: '#CBD5E1', true: '#EC4899' }}
+                                        thumbColor={WHITE}
+                                        style={{ marginVertical: wp(2) }}
+                                    />
+                                </View>
+                            </View>
+
+                            {showDatePicker && (
+                                <DateTimePicker
+                                    value={dateVal}
+                                    mode="date"
+                                    display="default"
+                                    onChange={(event: any, selectedDate?: Date) => {
+                                        setShowDatePicker(false);
+                                        if (selectedDate) {
+                                            setDateVal(selectedDate);
+                                            const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+                                            setDate(selectedDate.toLocaleDateString('en-US', options));
+                                            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                                            setDayOfWeek(days[selectedDate.getDay()]);
+                                        }
+                                    }}
                                 />
+                            )}
+
+                            {showTimePicker && (
+                                <DateTimePicker
+                                    value={timeVal}
+                                    mode="time"
+                                    display="default"
+                                    is24Hour={true}
+                                    onChange={(event: any, selectedTime?: Date) => {
+                                        setShowTimePicker(false);
+                                        if (selectedTime) {
+                                            setTimeVal(selectedTime);
+                                            const formattedTime = selectedTime.toLocaleTimeString('en-US', {
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                                hour12: true,
+                                            });
+                                            setTime(formattedTime);
+                                        }
+                                    }}
+                                />
+                            )}
+
+                            {validationError ? (
+                                <View style={s.errorBannerInline}>
+                                    <Text style={s.errorIcon}>⚠️</Text>
+                                    <Text style={s.errorText}>{validationError}</Text>
+                                </View>
+                            ) : null}
+
+                            {/* Cari (Search) Button */}
+                            <TouchableOpacity
+                                style={s.cariBtn}
+                                activeOpacity={0.9}
+                                onPress={() => {
+                                    let hasError = false;
+                                    if (!fromLoc.trim()) {
+                                        setFromError(true);
+                                        hasError = true;
+                                    }
+                                    if (!toLoc.trim()) {
+                                        setToError(true);
+                                        hasError = true;
+                                    }
+
+                                    if (hasError) {
+                                        setValidationError('Please select both pickup and destination locations.');
+                                        return;
+                                    }
+
+                                    setValidationError(null);
+                                    navigation.navigate('CarResults', {
+                                        fromLoc: fromLoc,
+                                        toLoc: toLoc,
+                                        womenSafety: womenSafety,
+                                    });
+                                }}
+                            >
+                                <Text style={s.cariText}>Book Now </Text>
+                                <Text style={s.cariArrow}> →</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* ── Special Offers ── */}
+                    <View style={s.section}>
+                        <View style={s.sectionRow}>
+                            <Text style={s.sectionTitle}>Special Offers</Text>
+                            <TouchableOpacity><Text style={s.seeAll}>See All</Text></TouchableOpacity>
+                        </View>
+
+                        {/* Offer Banner — Premium Hero Style */}
+                        <View style={s.offerBanner}>
+                            {/* Full bleed car photo as background-right */}
+                            <Image
+                                source={require('../assets/images/banner_car.png')}
+                                style={s.offerCarBgImage}
+                                resizeMode="cover"
+                            />
+
+                            {/* Left: text content */}
+                            <View style={s.offerLeft}>
+                                <View style={s.premiumLabel}>
+                                    <Text style={s.premiumLabelText}>PREMIUM CAR RENTALS</Text>
+                                </View>
+                                <Text style={s.offerHeadline}>Drive the City</Text>
+                                <Text style={s.offerHeadlineItalic}>in Style</Text>
+                                <Text style={s.offerDesc}>
+                                    Curated cars. Unmatched{`\n`}comfort. Anytime, anywhere.
+                                </Text>
+                                <TouchableOpacity style={s.bookNowBtn} activeOpacity={0.85}>
+                                    <Text style={s.bookNowText}>Book Now</Text>
+                                    <Text style={s.bookNowArrow}> →</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                    {/* ── Top Brands ── */}
+                    <View style={{ marginBottom: wp(22) }}>
+                        <View style={[s.sectionRow, { paddingHorizontal: wp(20) }]}>
+                            <Text style={s.sectionTitle}>Top Brands</Text>
+                            <TouchableOpacity><Text style={s.seeAll}>See All</Text></TouchableOpacity>
+                        </View>
+
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={s.brandsHorizontalScroll}
+                        >
+                            {BRANDS_DATA.map((b, idx) => (
+                                <TouchableOpacity key={b.id} style={[s.brandItem, idx === 0 && { marginLeft: wp(20) }]} activeOpacity={0.75}>
+                                    <View style={s.brandIconCircle}>
+                                        <Text style={s.brandIconText}>{b.icon}</Text>
+                                    </View>
+                                    <Text style={s.brandNameLabel}>{b.name}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+
+                    {/* ── Popular Cars ── */}
+                    <View style={{ marginBottom: wp(30) }}>
+                        <View style={[s.sectionRow, { paddingHorizontal: wp(20) }]}>
+                            <Text style={s.sectionTitle}>Popular Cars</Text>
+                            <TouchableOpacity><Text style={s.seeAll}>See All</Text></TouchableOpacity>
+                        </View>
+
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={s.carsHorizontalScroll}
+                        >
+                            {popularCars.map((car, idx) => (
+                                <View key={car.id} style={[s.carCard, idx === 0 && { marginLeft: wp(20) }]}>
+                                    {/* Image Wrapper with light background */}
+                                    <View style={s.carImageWrapper}>
+                                        {/* Heart outline top right */}
+                                        <TouchableOpacity style={s.favoriteHeart}>
+                                            <Text style={s.heartIconSymbol}>♡</Text>
+                                        </TouchableOpacity>
+
+                                        {/* Car Image */}
+                                        <Image
+                                            source={car.image}
+                                            style={s.carCardImage}
+                                            resizeMode="contain"
+                                        />
+                                    </View>
+
+                                    {/* Details */}
+                                    <Text style={s.carCardTitle}>{car.name}</Text>
+                                    <Text style={s.carCardSubtitle}>{car.type}</Text>
+
+                                    {/* Rating Row */}
+                                    <View style={s.ratingContainer}>
+                                        <Text style={s.ratingText}>⭐ {car.rating}</Text>
+                                        <Text style={s.tripsText}>({car.trips} trips)</Text>
+                                    </View>
+
+                                    {/* Price & Book Now Row */}
+                                    <View style={s.priceBookRow}>
+                                        <Text style={s.carPrice}>
+                                            {car.price}
+                                            <Text style={s.carPerDay}> / day</Text>
+                                        </Text>
+                                        <TouchableOpacity
+                                            style={s.cardBookBtn}
+                                            activeOpacity={0.8}
+                                            onPress={() => (navigation as any).navigate('CarDetails', { carId: car.id })}
+                                        >
+                                            <Text style={s.cardBookText}>Book Now</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            ))}
+                        </ScrollView>
+                    </View>
+
+                    {/* ── Top Routes ── */}
+                    <View style={{ marginBottom: wp(30) }}>
+                        <View style={[s.sectionRow, { paddingHorizontal: wp(20) }]}>
+                            <Text style={s.sectionTitle}>Top Routes</Text>
+                            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: wp(4) }}>
+                                <Text style={[s.seeAll, { color: BLUE }]}>Explore All</Text>
+                                <Text style={{ color: BLUE, fontSize: fs(12), fontWeight: '700' }}> ›</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ paddingRight: wp(20), gap: wp(14) }}
+                        >
+                            {ROUTES_DATA.map((route, idx) => (
+                                <View key={route.id} style={[s.routeCard, idx === 0 && { marginLeft: wp(20) }]}>
+                                    <Image
+                                        source={route.image}
+                                        style={s.routeImage}
+                                        resizeMode="cover"
+                                    />
+
+                                    {/* Pins with Curved/Dashed Line */}
+                                    <View style={s.routePinsRow}>
+                                        <Text style={s.routePinIcon}>📍</Text>
+                                        <View style={s.routeDashLine} />
+                                        <Text style={s.routePinIcon}>📍</Text>
+                                    </View>
+
+                                    {/* Route Names */}
+                                    <View style={s.routeNamesRow}>
+                                        <Text style={s.routeName}>{route.from}</Text>
+                                        <Text style={s.routeName}>{route.to}</Text>
+                                    </View>
+
+                                    {/* Distance Badge */}
+                                    <View style={s.routeDistanceBadge}>
+                                        <Text style={s.routeDistanceText}>{route.distance}</Text>
+                                    </View>
+                                </View>
+                            ))}
+                        </ScrollView>
+                    </View>
+
+                    {/* ── Safety Banner ── */}
+                    <View style={s.safetyBanner}>
+                        {/* Left: Premium Check Icon */}
+                        <View style={s.safetyIconCircle}>
+                            <View style={s.safetyBlueBadge}>
+                                <Text style={s.safetyCheckSymbol}>✓</Text>
                             </View>
                         </View>
 
-                        {showDatePicker && (
-                            <DateTimePicker
-                                value={dateVal}
-                                mode="date"
-                                display="default"
-                                onChange={(event: any, selectedDate?: Date) => {
-                                    setShowDatePicker(false);
-                                    if (selectedDate) {
-                                        setDateVal(selectedDate);
-                                        const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
-                                        setDate(selectedDate.toLocaleDateString('en-US', options));
-                                        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-                                        setDayOfWeek(days[selectedDate.getDay()]);
-                                    }
-                                }}
-                            />
-                        )}
+                        {/* Middle: Content */}
+                        <View style={s.safetyContent}>
+                            <Text style={s.safetyTitle}>Safe. Reliable. Always.</Text>
+                            <Text style={s.safetyDesc}>Well-maintained cars & verified partners for your peace of mind.</Text>
+                        </View>
 
-                        {showTimePicker && (
-                            <DateTimePicker
-                                value={timeVal}
-                                mode="time"
-                                display="default"
-                                is24Hour={true}
-                                onChange={(event: any, selectedTime?: Date) => {
-                                    setShowTimePicker(false);
-                                    if (selectedTime) {
-                                        setTimeVal(selectedTime);
-                                        const formattedTime = selectedTime.toLocaleTimeString('en-US', {
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                            hour12: true,
-                                        });
-                                        setTime(formattedTime);
-                                    }
-                                }}
-                            />
-                        )}
-
-                        {/* Cari (Search) Button */}
-                        <TouchableOpacity
-                            style={s.cariBtn}
-                            activeOpacity={0.9}
-                            onPress={() => {
-                                navigation.navigate('CarResults', {
-                                    fromLoc: fromLoc,
-                                    toLoc: toLoc,
-                                });
-                            }}
-                        >
-                            <Text style={s.cariText}>Book Now </Text>
-                            <Text style={s.cariArrow}> →</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                {/* ── Special Offers ── */}
-                <View style={s.section}>
-                    <View style={s.sectionRow}>
-                        <Text style={s.sectionTitle}>Special Offers</Text>
-                        <TouchableOpacity><Text style={s.seeAll}>See All</Text></TouchableOpacity>
-                    </View>
-
-                    {/* Offer Banner — Premium Hero Style */}
-                    <View style={s.offerBanner}>
-                        {/* Full bleed car photo as background-right */}
+                        {/* Right: Car Image */}
                         <Image
                             source={require('../assets/images/banner_car.png')}
-                            style={s.offerCarBgImage}
-                            resizeMode="cover"
+                            style={s.safetyCarImage}
+                            resizeMode="contain"
                         />
+                    </View>
 
-                        {/* Left: text content */}
-                        <View style={s.offerLeft}>
-                            <View style={s.premiumLabel}>
-                                <Text style={s.premiumLabelText}>PREMIUM CAR RENTALS</Text>
+                    {/* ── Why Choose ShiftRide ── */}
+                    <View style={s.whyChooseSection}>
+                        <Text style={[s.sectionTitle, { marginBottom: wp(18) }]}>Why Choose ShiftRide?</Text>
+
+                        <View style={s.featuresRow}>
+                            <View style={s.featureItem}>
+                                <View style={s.featureIconWrapper}>
+                                    <Text style={s.featureIcon}>🎖️</Text>
+                                </View>
+                                <Text style={s.featureTitle}>Best Prices</Text>
+                                <Text style={s.featureSubtitle}>Guaranteed</Text>
                             </View>
-                            <Text style={s.offerHeadline}>Drive the City</Text>
-                            <Text style={s.offerHeadlineItalic}>in Style</Text>
-                            <Text style={s.offerDesc}>
-                                Curated cars. Unmatched{`\n`}comfort. Anytime, anywhere.
-                            </Text>
-                            <TouchableOpacity style={s.bookNowBtn} activeOpacity={0.85}>
-                                <Text style={s.bookNowText}>Book Now</Text>
-                                <Text style={s.bookNowArrow}> →</Text>
-                            </TouchableOpacity>
+
+                            <View style={s.featureItem}>
+                                <View style={s.featureIconWrapper}>
+                                    <Text style={s.featureIcon}>🚗</Text>
+                                </View>
+                                <Text style={s.featureTitle}>Wide Range</Text>
+                                <Text style={s.featureSubtitle}>Of Cars</Text>
+                            </View>
+
+                            <View style={s.featureItem}>
+                                <View style={s.featureIconWrapper}>
+                                    <Text style={s.featureIcon}>🎧</Text>
+                                </View>
+                                <Text style={s.featureTitle}>24/7 Support</Text>
+                                <Text style={s.featureSubtitle}>We're here</Text>
+                            </View>
+
+                            <View style={s.featureItem}>
+                                <View style={s.featureIconWrapper}>
+                                    <Text style={s.featureIcon}>🛡️</Text>
+                                </View>
+                                <Text style={s.featureTitle}>Secure Booking</Text>
+                                <Text style={s.featureSubtitle}>100% Safe</Text>
+                            </View>
                         </View>
                     </View>
-                </View>
-                {/* ── Top Brands ── */}
-                <View style={{ marginBottom: wp(22) }}>
-                    <View style={[s.sectionRow, { paddingHorizontal: wp(20) }]}>
-                        <Text style={s.sectionTitle}>Top Brands</Text>
-                        <TouchableOpacity><Text style={s.seeAll}>See All</Text></TouchableOpacity>
-                    </View>
+                </Animated.View>
 
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={s.brandsHorizontalScroll}
-                    >
-                        {BRANDS_DATA.map((b, idx) => (
-                            <TouchableOpacity key={b.id} style={[s.brandItem, idx === 0 && { marginLeft: wp(20) }]} activeOpacity={0.75}>
-                                <View style={s.brandIconCircle}>
-                                    <Text style={s.brandIconText}>{b.icon}</Text>
-                                </View>
-                                <Text style={s.brandNameLabel}>{b.name}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
+                <View style={{ height: wp(40) }} />
+            </ScrollView>
 
-                {/* ── Popular Cars ── */}
-                <View style={{ marginBottom: wp(30) }}>
-                    <View style={[s.sectionRow, { paddingHorizontal: wp(20) }]}>
-                        <Text style={s.sectionTitle}>Popular Cars</Text>
-                        <TouchableOpacity><Text style={s.seeAll}>See All</Text></TouchableOpacity>
-                    </View>
-
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={s.carsHorizontalScroll}
-                    >
-                        {popularCars.map((car, idx) => (
-                            <View key={car.id} style={[s.carCard, idx === 0 && { marginLeft: wp(20) }]}>
-                                {/* Image Wrapper with light background */}
-                                <View style={s.carImageWrapper}>
-                                    {/* Heart outline top right */}
-                                    <TouchableOpacity style={s.favoriteHeart}>
-                                        <Text style={s.heartIconSymbol}>♡</Text>
-                                    </TouchableOpacity>
-
-                                    {/* Car Image */}
-                                    <Image
-                                        source={car.image}
-                                        style={s.carCardImage}
-                                        resizeMode="contain"
-                                    />
-                                </View>
-
-                                {/* Details */}
-                                <Text style={s.carCardTitle}>{car.name}</Text>
-                                <Text style={s.carCardSubtitle}>{car.type}</Text>
-
-                                {/* Rating Row */}
-                                <View style={s.ratingContainer}>
-                                    <Text style={s.ratingText}>⭐ {car.rating}</Text>
-                                    <Text style={s.tripsText}>({car.trips} trips)</Text>
-                                </View>
-
-                                {/* Price & Book Now Row */}
-                                <View style={s.priceBookRow}>
-                                    <Text style={s.carPrice}>
-                                        {car.price}
-                                        <Text style={s.carPerDay}> / day</Text>
+            {/* Active booking floating notification (Uber style) */}
+            {activeBooking ? (
+                <Animated.View style={[s.uberActiveBookingCard, { opacity: cardOpacity }]}>
+                    {activeBooking.bookingStatus === 'REQUESTED' || activeBooking.bookingStatus === 'FORWARDED_TO_DRIVER' || !activeBooking.driverAssigned || !activeBooking.driverId ? (
+                        // ── PENDING / REQUESTED STATUS: SHOW SEARCHING SPINNER ──
+                        <TouchableOpacity
+                            activeOpacity={0.9}
+                            onPress={() => (navigation as any).navigate('BookingDetails', { bookingId: activeBooking.id || activeBooking._id })}
+                            style={s.uberPendingContainer}
+                        >
+                            <View style={{ flex: 1 }}>
+                                <View style={s.uberPendingHeader}>
+                                    <ActivityIndicator size="small" color={BLUE} style={{ marginRight: wp(6) }} />
+                                    <Text style={s.uberPendingTitle}>
+                                        {activeBooking.bookingStatus === 'FORWARDED_TO_DRIVER' ? 'Forwarded to driver...' : 'Finding your driver...'}
                                     </Text>
-                                    <TouchableOpacity 
-                                        style={s.cardBookBtn} 
-                                        activeOpacity={0.8}
-                                        onPress={() => (navigation as any).navigate('CarDetails', { carId: car.id })}
-                                    >
-                                        <Text style={s.cardBookText}>Book Now</Text>
-                                    </TouchableOpacity>
                                 </View>
+                                <Text style={s.uberPendingRoute}>{activeBooking.pickup_location} ➔ {activeBooking.drop_location}</Text>
+                                <Text style={s.uberPendingCar}>{activeBooking.car_id?.name || 'Your Ride'}</Text>
                             </View>
-                        ))}
-                    </ScrollView>
-                </View>
-
-                {/* ── Top Routes ── */}
-                <View style={{ marginBottom: wp(30) }}>
-                    <View style={[s.sectionRow, { paddingHorizontal: wp(20) }]}>
-                        <Text style={s.sectionTitle}>Top Routes</Text>
-                        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: wp(4) }}>
-                            <Text style={[s.seeAll, { color: BLUE }]}>Explore All</Text>
-                            <Text style={{ color: BLUE, fontSize: fs(12), fontWeight: '700' }}> ›</Text>
+                            <View style={s.uberPendingArrow}>
+                                <Text style={{ color: BLUE, fontSize: fs(18), fontWeight: '700' }}>›</Text>
+                            </View>
                         </TouchableOpacity>
-                    </View>
+                    ) : activeBooking.bookingStatus === 'DRIVER_ACCEPTED' && activeBooking.paymentStatus === 'NOT_PAID' ? (
+                        // ── DRIVER ACCEPTED BUT NOT PAID: SHOW PAY NOW BUTTON ──
+                        <View style={{ gap: wp(10) }}>
+                            {/* Top Row: Car details */}
+                            <View style={s.uberTopRow}>
+                                <View style={s.uberDriverCol}>
+                                    <View style={s.uberAvatarCircle}>
+                                        <Text style={s.uberAvatarEmoji}>👤</Text>
+                                    </View>
+                                    <Text style={s.uberDriverName} numberOfLines={1}>
+                                        {activeBooking.driverId.driverName?.split(' ')[0] || 'Driver'}
+                                    </Text>
+                                </View>
 
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={{ paddingRight: wp(20), gap: wp(14) }}
-                    >
-                        {ROUTES_DATA.map((route, idx) => (
-                            <View key={route.id} style={[s.routeCard, idx === 0 && { marginLeft: wp(20) }]}>
                                 <Image
-                                    source={route.image}
-                                    style={s.routeImage}
-                                    resizeMode="cover"
+                                    source={activeBooking.car_id?.cars_image
+                                        ? { uri: getCarImageUrl(activeBooking.car_id.cars_image) }
+                                        : require('../assets/images/banner_car.png')
+                                    }
+                                    style={s.uberCarImage}
+                                    resizeMode="contain"
                                 />
 
-                                {/* Pins with Curved/Dashed Line */}
-                                <View style={s.routePinsRow}>
-                                    <Text style={s.routePinIcon}>📍</Text>
-                                    <View style={s.routeDashLine} />
-                                    <Text style={s.routePinIcon}>📍</Text>
-                                </View>
-
-                                {/* Route Names */}
-                                <View style={s.routeNamesRow}>
-                                    <Text style={s.routeName}>{route.from}</Text>
-                                    <Text style={s.routeName}>{route.to}</Text>
-                                </View>
-
-                                {/* Distance Badge */}
-                                <View style={s.routeDistanceBadge}>
-                                    <Text style={s.routeDistanceText}>{route.distance}</Text>
+                                <View style={s.uberCarCol}>
+                                    <Text style={s.uberVehiclePlate}>{activeBooking.car_id?.vehicle_number || '3M53AF2'}</Text>
+                                    <Text style={s.uberCarDetailName} numberOfLines={2}>
+                                        {activeBooking.car_id?.name || 'Silver Honda Civic'}
+                                    </Text>
                                 </View>
                             </View>
-                        ))}
-                    </ScrollView>
-                </View>
 
-                {/* ── Safety Banner ── */}
-                <View style={s.safetyBanner}>
-                    {/* Left: Premium Check Icon */}
-                    <View style={s.safetyIconCircle}>
-                        <View style={s.safetyBlueBadge}>
-                            <Text style={s.safetyCheckSymbol}>✓</Text>
-                        </View>
-                    </View>
-
-                    {/* Middle: Content */}
-                    <View style={s.safetyContent}>
-                        <Text style={s.safetyTitle}>Safe. Reliable. Always.</Text>
-                        <Text style={s.safetyDesc}>Well-maintained cars & verified partners for your peace of mind.</Text>
-                    </View>
-
-                    {/* Right: Car Image */}
-                    <Image
-                        source={require('../assets/images/banner_car.png')}
-                        style={s.safetyCarImage}
-                        resizeMode="contain"
-                    />
-                </View>
-
-                {/* ── Why Choose ShiftRide ── */}
-                <View style={s.whyChooseSection}>
-                    <Text style={[s.sectionTitle, { marginBottom: wp(18) }]}>Why Choose ShiftRide?</Text>
-
-                    <View style={s.featuresRow}>
-                        <View style={s.featureItem}>
-                            <View style={s.featureIconWrapper}>
-                                <Text style={s.featureIcon}>🎖️</Text>
+                            {/* Middle Row: Payment Reminder */}
+                            <View style={{ gap: wp(4), paddingVertical: wp(2) }}>
+                                <Text style={{ color: NAVY, fontSize: fs(12), fontWeight: '800' }}>
+                                    Driver accepted! Please complete your payment.
+                                </Text>
+                                {activeBooking.otp && (
+                                    <View style={{ flexDirection: 'row', marginTop: wp(4) }}>
+                                        <View style={s.uberOtpContainer}>
+                                            <Text style={s.uberOtpLabel}>RIDE OTP: </Text>
+                                            <Text style={s.uberOtpVal}>{activeBooking.otp}</Text>
+                                        </View>
+                                    </View>
+                                )}
                             </View>
-                            <Text style={s.featureTitle}>Best Prices</Text>
-                            <Text style={s.featureSubtitle}>Guaranteed</Text>
-                        </View>
 
-                        <View style={s.featureItem}>
-                            <View style={s.featureIconWrapper}>
-                                <Text style={s.featureIcon}>🚗</Text>
+                            {/* Bottom Row: Pay Now Button */}
+                            <TouchableOpacity 
+                                style={s.uberPayBtn} 
+                                activeOpacity={0.85}
+                                onPress={() => handlePayNow(activeBooking)}
+                                disabled={paymentLoading}
+                            >
+                                {paymentLoading ? (
+                                    <ActivityIndicator color={WHITE} size="small" />
+                                ) : (
+                                    <Text style={s.uberPayBtnText}>Pay Now (₹{activeBooking.total_amount})</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        // ── PAID / CONFIRMED / ONGOING: SHOW FULL DRIVER DETAILS & OTP ──
+                        <View style={{ gap: wp(10) }}>
+                            {/* Top Row: Driver & Car details */}
+                            <View style={s.uberTopRow}>
+                                {/* Driver Profile Column */}
+                                <View style={s.uberDriverCol}>
+                                    <View style={s.uberAvatarCircle}>
+                                        <Text style={s.uberAvatarEmoji}>👤</Text>
+                                    </View>
+                                    <View style={s.uberDriverRatingBadge}>
+                                        <Text style={s.uberDriverRatingText}>⭐ 4.9</Text>
+                                    </View>
+                                    <Text style={s.uberDriverName} numberOfLines={1}>
+                                        {activeBooking.driverId.driverName?.split(' ')[0] || 'Driver'}
+                                    </Text>
+                                </View>
+
+                                {/* Car Image */}
+                                <Image
+                                    source={activeBooking.car_id?.cars_image
+                                        ? { uri: getCarImageUrl(activeBooking.car_id.cars_image) }
+                                        : require('../assets/images/banner_car.png')
+                                    }
+                                    style={s.uberCarImage}
+                                    resizeMode="contain"
+                                />
+
+                                {/* Car Number & Name Column */}
+                                <View style={s.uberCarCol}>
+                                    <Text style={s.uberVehiclePlate}>{activeBooking.car_id?.vehicle_number || '3M53AF2'}</Text>
+                                    <Text style={s.uberCarDetailName} numberOfLines={2}>
+                                        {activeBooking.car_id?.name || 'Silver Honda Civic'}
+                                    </Text>
+                                </View>
                             </View>
-                            <Text style={s.featureTitle}>Wide Range</Text>
-                            <Text style={s.featureSubtitle}>Of Cars</Text>
-                        </View>
 
-                        <View style={s.featureItem}>
-                            <View style={s.featureIconWrapper}>
-                                <Text style={s.featureIcon}>🎧</Text>
+                            {/* Middle Row: Tags & OTP */}
+                            <View style={s.uberMiddleRow}>
+                                <View style={s.uberTagsRow}>
+                                    <Text style={s.uberTagText}>⏱️ Top-rated</Text>
+                                    <Text style={s.uberTagText}>🛡️ Dashcam</Text>
+                                </View>
+                                {activeBooking.otp && (
+                                    <View style={s.uberOtpContainer}>
+                                        <Text style={s.uberOtpLabel}>RIDE OTP: </Text>
+                                        <Text style={s.uberOtpVal}>{activeBooking.otp}</Text>
+                                    </View>
+                                )}
                             </View>
-                            <Text style={s.featureTitle}>24/7 Support</Text>
-                            <Text style={s.featureSubtitle}>We're here</Text>
-                        </View>
 
-                        <View style={s.featureItem}>
-                            <View style={s.featureIconWrapper}>
-                                <Text style={s.featureIcon}>🛡️</Text>
+                            {activeBooking.women_safety_mode && (
+                                <TouchableOpacity
+                                    style={{
+                                        backgroundColor: '#FFF0F3',
+                                        borderColor: '#FCE7F3',
+                                        borderWidth: 1,
+                                        borderRadius: wp(10),
+                                        padding: wp(8),
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: wp(6),
+                                        marginBottom: wp(2)
+                                    }}
+                                    activeOpacity={0.8}
+                                    onPress={() => (navigation as any).navigate('BookingDetails', { bookingId: activeBooking.id || activeBooking._id })}
+                                >
+                                    <Text style={{ fontSize: fs(12) }}>♀️</Text>
+                                    <Text style={{ color: '#DB2777', fontWeight: '800', fontSize: fs(11) }}>
+                                        Women Safety Mode Active • Tap for SOS Center
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {/* Bottom Row: Communication Buttons */}
+                            <View style={s.uberButtonsRow}>
+                                <TouchableOpacity
+                                    style={s.uberMsgBtn}
+                                    activeOpacity={0.8}
+                                    onPress={() => Linking.openURL(`sms:${activeBooking.driverId.phone}`)}
+                                >
+                                    <Text style={s.uberMsgIcon}>💬</Text>
+                                    <Text style={s.uberMsgBtnText}>Send a message</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={s.uberCallBtn}
+                                    activeOpacity={0.8}
+                                    onPress={() => Linking.openURL(`tel:${activeBooking.driverId.phone}`)}
+                                >
+                                    <Text style={s.uberCallIcon}>📞</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={s.uberMoreBtn}
+                                    activeOpacity={0.8}
+                                    onPress={() => (navigation as any).navigate('BookingDetails', { bookingId: activeBooking.id || activeBooking._id })}
+                                >
+                                    <Text style={s.uberMoreIcon}>•••</Text>
+                                </TouchableOpacity>
                             </View>
-                            <Text style={s.featureTitle}>Secure Booking</Text>
-                            <Text style={s.featureSubtitle}>100% Safe</Text>
                         </View>
-                    </View>
-                </View>
-            </Animated.View>
+                    )}
 
-            <View style={{ height: wp(40) }} />
-        </ScrollView>
+                    {/* Success OTP Verification Overlay */}
+                    {isOtpVerified ? (
+                        <Animated.View style={[s.successOverlay, { transform: [{ scale: successScale }] }]}>
+                            <View style={s.successCircle}>
+                                <Text style={s.successCheckmark}>✓</Text>
+                            </View>
+                            <Text style={s.successText}>OTP Verified!</Text>
+                            <Text style={s.successSubtext}>Have a safe trip</Text>
+                        </Animated.View>
+                    ) : null}
+                </Animated.View>
+            ) : null}
 
             {/* ── Bottom Nav Component ── */}
             <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -1340,6 +1742,291 @@ const s = StyleSheet.create({
         fontWeight: '600',
         marginTop: wp(2),
         textAlign: 'center',
+    },
+    errorRowHighlight: {
+        borderColor: '#EF4444',
+        borderWidth: 1,
+        borderRadius: wp(12),
+        paddingHorizontal: wp(8),
+        backgroundColor: '#FEF2F2',
+    },
+    errorBannerInline: {
+        backgroundColor: '#FEF2F2',
+        borderWidth: 1,
+        borderColor: '#FCA5A5',
+        borderRadius: wp(12),
+        paddingHorizontal: wp(14),
+        paddingVertical: wp(10),
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: wp(14),
+        gap: wp(8),
+    },
+    errorIcon: {
+        fontSize: fs(14),
+    },
+    errorText: {
+        fontSize: fs(11.5),
+        fontWeight: '700',
+        color: '#DC2626',
+        flex: 1,
+    },
+    uberActiveBookingCard: {
+        position: 'absolute',
+        bottom: wp(90),
+        left: wp(16),
+        right: wp(16),
+        backgroundColor: WHITE,
+        borderRadius: wp(20),
+        padding: wp(16),
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+        elevation: 10,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        zIndex: 99,
+    },
+    uberTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    uberDriverCol: {
+        alignItems: 'center',
+        width: wp(60),
+    },
+    uberAvatarCircle: {
+        width: wp(52),
+        height: wp(52),
+        borderRadius: wp(26),
+        backgroundColor: '#F1F5F9',
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    uberAvatarEmoji: {
+        fontSize: fs(24),
+    },
+    uberDriverRatingBadge: {
+        backgroundColor: WHITE,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: wp(8),
+        paddingHorizontal: wp(5),
+        paddingVertical: wp(2),
+        marginTop: -wp(10),
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    uberDriverRatingText: {
+        fontSize: fs(9),
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    uberDriverName: {
+        fontSize: fs(12),
+        fontWeight: '800',
+        color: '#0F172A',
+        marginTop: wp(4),
+    },
+    uberCarImage: {
+        width: wp(120),
+        height: wp(70),
+        marginHorizontal: wp(6),
+    },
+    uberCarCol: {
+        flex: 1,
+        alignItems: 'flex-end',
+    },
+    uberVehiclePlate: {
+        fontSize: fs(16),
+        fontWeight: '900',
+        color: '#0F172A',
+        letterSpacing: 0.5,
+    },
+    uberCarDetailName: {
+        fontSize: fs(11),
+        color: GRAY,
+        fontWeight: '600',
+        textAlign: 'right',
+        marginTop: wp(2),
+    },
+    uberMiddleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: '#F1F5F9',
+        paddingVertical: wp(8),
+        marginVertical: wp(4),
+    },
+    uberTagsRow: {
+        flexDirection: 'row',
+        gap: wp(10),
+    },
+    uberTagText: {
+        fontSize: fs(10.5),
+        color: GRAY,
+        fontWeight: '600',
+    },
+    uberOtpContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F0FDF4',
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+        paddingHorizontal: wp(8),
+        paddingVertical: wp(3),
+        borderRadius: wp(8),
+    },
+    uberOtpLabel: {
+        fontSize: fs(9),
+        fontWeight: '800',
+        color: '#16A34A',
+    },
+    uberOtpVal: {
+        fontSize: fs(11.5),
+        fontWeight: '900',
+        color: '#15803D',
+        letterSpacing: 0.5,
+    },
+    uberButtonsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: wp(8),
+        marginTop: wp(2),
+    },
+    uberMsgBtn: {
+        flex: 1,
+        height: wp(42),
+        backgroundColor: '#F1F5F9',
+        borderRadius: wp(12),
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: wp(6),
+    },
+    uberMsgIcon: {
+        fontSize: fs(14),
+    },
+    uberMsgBtnText: {
+        fontSize: fs(12),
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    uberCallBtn: {
+        width: wp(42),
+        height: wp(42),
+        backgroundColor: '#F1F5F9',
+        borderRadius: wp(12),
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    uberCallIcon: {
+        fontSize: fs(14),
+    },
+    uberMoreBtn: {
+        width: wp(42),
+        height: wp(42),
+        backgroundColor: '#F1F5F9',
+        borderRadius: wp(12),
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    uberMoreIcon: {
+        fontSize: fs(12),
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    uberPendingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    uberPendingHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: wp(4),
+    },
+    uberPendingTitle: {
+        fontSize: fs(14),
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    uberPendingRoute: {
+        fontSize: fs(11.5),
+        color: GRAY,
+        fontWeight: '600',
+    },
+    uberPendingCar: {
+        fontSize: fs(11.5),
+        color: BLUE,
+        fontWeight: '700',
+        marginTop: wp(2),
+    },
+    uberPendingArrow: {
+        width: wp(30),
+        height: wp(30),
+        borderRadius: wp(15),
+        backgroundColor: '#EFF6FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    successOverlay: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderRadius: wp(20),
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+    },
+    successCircle: {
+        width: wp(56),
+        height: wp(56),
+        borderRadius: wp(28),
+        backgroundColor: '#F0FDF4',
+        borderWidth: 3,
+        borderColor: '#22C55E',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: wp(6),
+    },
+    successCheckmark: {
+        fontSize: fs(28),
+        color: '#22C55E',
+        fontWeight: '900',
+    },
+    successText: {
+        fontSize: fs(14.5),
+        fontWeight: '900',
+        color: '#0F172A',
+    },
+    successSubtext: {
+        fontSize: fs(11),
+        color: GRAY,
+        fontWeight: '700',
+        marginTop: wp(2),
+    },
+    uberPayBtn: {
+        backgroundColor: '#22C55E',
+        paddingVertical: wp(12),
+        borderRadius: wp(12),
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: wp(6),
+    },
+    uberPayBtnText: {
+        color: WHITE,
+        fontSize: fs(14),
+        fontWeight: '900',
     },
 });
 

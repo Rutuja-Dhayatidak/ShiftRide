@@ -1,0 +1,1 @@
+C:\carApp\ShiftRideVendor\android\app\build\intermediates\cxx\Debug\12w543y4\obj\x86_64

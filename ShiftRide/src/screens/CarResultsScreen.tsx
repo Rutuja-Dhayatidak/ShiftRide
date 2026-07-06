@@ -313,7 +313,7 @@ export default function CarResultsScreen() {
         const performSearch = async () => {
             try {
                 setLoading(true);
-                const data = await searchCars(fromLocation, toLocation, '2026-07-04');
+                const data = await searchCars(fromLocation, toLocation, '2026-07-04', route.params?.womenSafety || false);
 
                 if (data && data.success) {
                     const mapped = (data.cars || []).map((c: any) => {
@@ -564,6 +564,7 @@ export default function CarResultsScreen() {
                                         estimatedFare: item.totalPrice,
                                         pickup: fromLocation,
                                         drop: toLocation,
+                                        womenSafety: route.params?.womenSafety || false,
                                     })}
                                 >
                                 

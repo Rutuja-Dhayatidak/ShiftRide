@@ -42,6 +42,7 @@ export default function PaymentScreen() {
             carId,
             billingData,
             paymentMethod: selectedMethod,
+            womenSafety: route.params?.womenSafety || false,
         });
     };
 
