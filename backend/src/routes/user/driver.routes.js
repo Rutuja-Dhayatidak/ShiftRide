@@ -16,6 +16,7 @@ router.post("/bookings/:bookingId/accept", jwtUtils.authMiddleware("driver"), ri
 router.post("/bookings/:bookingId/reject", jwtUtils.authMiddleware("driver"), rideCtrl.rejectRide);
 router.post("/location/update", jwtUtils.authMiddleware("driver"), rideCtrl.updateLocation);
 router.patch("/status", jwtUtils.authMiddleware("driver"), rideCtrl.updateDriverStatus);
+router.post("/update-photo", jwtUtils.authMiddleware("driver"), driverAuth.updatePhoto);
 
 /* OTP & Trip lifecycle controls (requires driver role) */
 router.post("/bookings/:bookingId/verify-otp", jwtUtils.authMiddleware("driver"), rideCtrl.verifyOtp);

@@ -1,6 +1,9 @@
 {
   "buildFiles": [
+    "C:\\carApp\\ShiftRideVendor\\node_modules\\@react-native-async-storage\\async-storage\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
+    "C:\\carApp\\ShiftRideVendor\\node_modules\\react-native-image-picker\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRideVendor\\node_modules\\react-native-safe-area-context\\android\\src\\main\\jni\\CMakeLists.txt",
+    "C:\\carApp\\ShiftRideVendor\\node_modules\\react-native-screens\\android\\src\\main\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRideVendor\\node_modules\\react-native\\ReactAndroid\\cmake-utils\\default-app-setup\\CMakeLists.txt"
   ],
   "cleanCommandsComponents": [
@@ -28,16 +31,37 @@
         "C:\\Users\\ADMIN\\.gradle\\caches\\9.3.1\\transforms\\2b7c23aa4547eb79508e5d3aa3f2bc7a\\workspace\\transformed\\react-android-0.86.0-debug\\prefab\\modules\\reactnative\\libs\\android.x86\\libreactnative.so"
       ]
     },
+    "react_codegen_RNImagePickerSpec::@f66ee9a2efecfb28bee4": {
+      "artifactName": "react_codegen_RNImagePickerSpec",
+      "abi": "x86",
+      "runtimeFiles": []
+    },
+    "react_codegen_rnscreens::@25bcbd507e98d3a854ad": {
+      "artifactName": "react_codegen_rnscreens",
+      "abi": "x86",
+      "output": "C:\\carApp\\ShiftRideVendor\\android\\app\\build\\intermediates\\cxx\\Debug\\12w543y4\\obj\\x86\\libreact_codegen_rnscreens.so",
+      "runtimeFiles": [
+        "C:\\Users\\ADMIN\\.gradle\\caches\\9.3.1\\transforms\\2b7c23aa4547eb79508e5d3aa3f2bc7a\\workspace\\transformed\\react-android-0.86.0-debug\\prefab\\modules\\reactnative\\libs\\android.x86\\libreactnative.so",
+        "C:\\Users\\ADMIN\\.gradle\\caches\\9.3.1\\transforms\\2b7c23aa4547eb79508e5d3aa3f2bc7a\\workspace\\transformed\\react-android-0.86.0-debug\\prefab\\modules\\jsi\\libs\\android.x86\\libjsi.so",
+        "C:\\Users\\ADMIN\\.gradle\\caches\\9.3.1\\transforms\\3c01aea05d2737e987399f1309ae090e\\workspace\\transformed\\fbjni-0.7.0\\prefab\\modules\\fbjni\\libs\\android.x86\\libfbjni.so"
+      ]
+    },
     "appmodules::@6890427a1f51a3e7e1df": {
       "artifactName": "appmodules",
       "abi": "x86",
       "output": "C:\\carApp\\ShiftRideVendor\\android\\app\\build\\intermediates\\cxx\\Debug\\12w543y4\\obj\\x86\\libappmodules.so",
       "runtimeFiles": [
         "C:\\carApp\\ShiftRideVendor\\android\\app\\build\\intermediates\\cxx\\Debug\\12w543y4\\obj\\x86\\libreact_codegen_safeareacontext.so",
+        "C:\\carApp\\ShiftRideVendor\\android\\app\\build\\intermediates\\cxx\\Debug\\12w543y4\\obj\\x86\\libreact_codegen_rnscreens.so",
         "C:\\Users\\ADMIN\\.gradle\\caches\\9.3.1\\transforms\\3c01aea05d2737e987399f1309ae090e\\workspace\\transformed\\fbjni-0.7.0\\prefab\\modules\\fbjni\\libs\\android.x86\\libfbjni.so",
         "C:\\Users\\ADMIN\\.gradle\\caches\\9.3.1\\transforms\\2b7c23aa4547eb79508e5d3aa3f2bc7a\\workspace\\transformed\\react-android-0.86.0-debug\\prefab\\modules\\jsi\\libs\\android.x86\\libjsi.so",
         "C:\\Users\\ADMIN\\.gradle\\caches\\9.3.1\\transforms\\2b7c23aa4547eb79508e5d3aa3f2bc7a\\workspace\\transformed\\react-android-0.86.0-debug\\prefab\\modules\\reactnative\\libs\\android.x86\\libreactnative.so"
       ]
+    },
+    "react_codegen_AsyncStorageSpec::@15af80695a6281ecf900": {
+      "artifactName": "react_codegen_AsyncStorageSpec",
+      "abi": "x86",
+      "runtimeFiles": []
     }
   }
 }

@@ -65,3 +65,33 @@ exports.me = async (req, res) => {
     return res.status(500).json({ message: "Failed to fetch driver profile" });
   }
 };
+
+const { uploadToCloudinary } = require("../utils/cloudinary");
+
+exports.updatePhoto = async (req, res) => {
+  try {
+    if (!req.files || !req.files.photo) {
+      return res.status(400).json({ message: "Driver photo file is required" });
+    }
+
+    const photoUrl = await uploadToCloudinary(req.files.photo);
+    if (!photoUrl) {
+      return res.status(500).json({ message: "Failed to upload photo to storage" });
+    }
+
+    const driver = await Driver.findByIdAndUpdate(
+      req.user.id,
+      { driverPhoto: photoUrl },
+      { new: true }
+    ).select("-password");
+
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    return res.json({ success: true, message: "Photo updated successfully!", driver });
+  } catch (err) {
+    console.error("updatePhoto error:", err);
+    return res.status(500).json({ message: "Failed to update driver photo" });
+  }
+};

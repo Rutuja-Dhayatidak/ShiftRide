@@ -12,6 +12,54 @@ if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
   file(TOUCH_NOCREATE "C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/CMakeFiles/cmake.verify_globs")
 endif()
 
+# react_codegen_SRCS at C:/carApp/ShiftRideVendor/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/CMakeLists.txt:9 (file)
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "C:/carApp/ShiftRideVendor/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/*.cpp")
+set(OLD_GLOB
+  "C:/carApp/ShiftRideVendor/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/AsyncStorageSpec-generated.cpp"
+  )
+if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
+  message("-- GLOB mismatch!")
+  file(TOUCH_NOCREATE "C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/CMakeFiles/cmake.verify_globs")
+endif()
+
+# react_codegen_SRCS at C:/carApp/ShiftRideVendor/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/CMakeLists.txt:9 (file)
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "C:/carApp/ShiftRideVendor/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/react/renderer/components/AsyncStorageSpec/*.cpp")
+set(OLD_GLOB
+  "C:/carApp/ShiftRideVendor/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/react/renderer/components/AsyncStorageSpec/ComponentDescriptors.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/react/renderer/components/AsyncStorageSpec/EventEmitters.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/react/renderer/components/AsyncStorageSpec/Props.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/react/renderer/components/AsyncStorageSpec/ShadowNodes.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/react/renderer/components/AsyncStorageSpec/States.cpp"
+  )
+if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
+  message("-- GLOB mismatch!")
+  file(TOUCH_NOCREATE "C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/CMakeFiles/cmake.verify_globs")
+endif()
+
+# react_codegen_SRCS at C:/carApp/ShiftRideVendor/node_modules/react-native-image-picker/android/build/generated/source/codegen/jni/CMakeLists.txt:9 (file)
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "C:/carApp/ShiftRideVendor/node_modules/react-native-image-picker/android/build/generated/source/codegen/jni/*.cpp")
+set(OLD_GLOB
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-image-picker/android/build/generated/source/codegen/jni/RNImagePickerSpec-generated.cpp"
+  )
+if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
+  message("-- GLOB mismatch!")
+  file(TOUCH_NOCREATE "C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/CMakeFiles/cmake.verify_globs")
+endif()
+
+# react_codegen_SRCS at C:/carApp/ShiftRideVendor/node_modules/react-native-image-picker/android/build/generated/source/codegen/jni/CMakeLists.txt:9 (file)
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "C:/carApp/ShiftRideVendor/node_modules/react-native-image-picker/android/build/generated/source/codegen/jni/react/renderer/components/RNImagePickerSpec/*.cpp")
+set(OLD_GLOB
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-image-picker/android/build/generated/source/codegen/jni/react/renderer/components/RNImagePickerSpec/ComponentDescriptors.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-image-picker/android/build/generated/source/codegen/jni/react/renderer/components/RNImagePickerSpec/EventEmitters.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-image-picker/android/build/generated/source/codegen/jni/react/renderer/components/RNImagePickerSpec/Props.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-image-picker/android/build/generated/source/codegen/jni/react/renderer/components/RNImagePickerSpec/ShadowNodes.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-image-picker/android/build/generated/source/codegen/jni/react/renderer/components/RNImagePickerSpec/States.cpp"
+  )
+if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
+  message("-- GLOB mismatch!")
+  file(TOUCH_NOCREATE "C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/CMakeFiles/cmake.verify_globs")
+endif()
+
 # LIB_CUSTOM_SRCS at C:/carApp/ShiftRideVendor/node_modules/react-native-safe-area-context/android/src/main/jni/CMakeLists.txt:12 (file)
 file(GLOB NEW_GLOB LIST_DIRECTORIES true "C:/carApp/ShiftRideVendor/node_modules/react-native-safe-area-context/android/src/main/jni/*.cpp")
 set(OLD_GLOB
@@ -50,6 +98,69 @@ set(OLD_GLOB
   "C:/carApp/ShiftRideVendor/node_modules/react-native-safe-area-context/android/src/main/jni/../../../build/generated/source/codegen/jni/react/renderer/components/safeareacontext/Props.cpp"
   "C:/carApp/ShiftRideVendor/node_modules/react-native-safe-area-context/android/src/main/jni/../../../build/generated/source/codegen/jni/react/renderer/components/safeareacontext/ShadowNodes.cpp"
   "C:/carApp/ShiftRideVendor/node_modules/react-native-safe-area-context/android/src/main/jni/../../../build/generated/source/codegen/jni/react/renderer/components/safeareacontext/States.cpp"
+  )
+if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
+  message("-- GLOB mismatch!")
+  file(TOUCH_NOCREATE "C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/CMakeFiles/cmake.verify_globs")
+endif()
+
+# LIB_CUSTOM_SRCS at C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/CMakeLists.txt:23 (file)
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/*.cpp")
+set(OLD_GLOB
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/rnscreens.cpp"
+  )
+if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
+  message("-- GLOB mismatch!")
+  file(TOUCH_NOCREATE "C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/CMakeFiles/cmake.verify_globs")
+endif()
+
+# LIB_CUSTOM_SRCS at C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/CMakeLists.txt:23 (file)
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/*.cpp")
+set(OLD_GLOB
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSFullWindowOverlayShadowNode.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSModalScreenShadowNode.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSSafeAreaViewShadowNode.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSSafeAreaViewState.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSScreenShadowNode.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSScreenShadowNodeCommitHook.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSScreenStackHeaderConfigShadowNode.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSScreenStackHeaderConfigState.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSScreenStackHeaderSubviewShadowNode.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSScreenStackHeaderSubviewState.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSScreenState.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSSplitScreenShadowNode.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSStackHeaderConfigShadowNode.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSStackHeaderConfigState.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSStackHeaderSubviewShadowNode.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSStackHeaderSubviewState.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSStackScreenShadowNode.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSStackScreenState.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSTabsBottomAccessoryShadowNode.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSTabsHostShadowNode.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/RNSTabsHostState.cpp"
+  )
+if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
+  message("-- GLOB mismatch!")
+  file(TOUCH_NOCREATE "C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/CMakeFiles/cmake.verify_globs")
+endif()
+
+# LIB_CUSTOM_SRCS at C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/CMakeLists.txt:23 (file)
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../../common/cpp/react/renderer/components/rnscreens/utils/*.cpp")
+set(OLD_GLOB
+  )
+if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
+  message("-- GLOB mismatch!")
+  file(TOUCH_NOCREATE "C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/CMakeFiles/cmake.verify_globs")
+endif()
+
+# LIB_CODEGEN_SRCS at C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/CMakeLists.txt:24 (file)
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../build/generated/source/codegen/jni/react/renderer/components/rnscreens/*.cpp")
+set(OLD_GLOB
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../build/generated/source/codegen/jni/react/renderer/components/rnscreens/ComponentDescriptors.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../build/generated/source/codegen/jni/react/renderer/components/rnscreens/EventEmitters.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../build/generated/source/codegen/jni/react/renderer/components/rnscreens/Props.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../build/generated/source/codegen/jni/react/renderer/components/rnscreens/ShadowNodes.cpp"
+  "C:/carApp/ShiftRideVendor/node_modules/react-native-screens/android/src/main/jni/../../../build/generated/source/codegen/jni/react/renderer/components/rnscreens/States.cpp"
   )
 if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
   message("-- GLOB mismatch!")

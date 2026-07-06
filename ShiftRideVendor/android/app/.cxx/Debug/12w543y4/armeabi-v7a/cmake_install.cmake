@@ -45,6 +45,9 @@ endif()
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
   include("C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/safeareacontext_autolinked_build/cmake_install.cmake")
+  include("C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/AsyncStorageSpec_autolinked_build/cmake_install.cmake")
+  include("C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/rnscreens_autolinked_build/cmake_install.cmake")
+  include("C:/carApp/ShiftRideVendor/android/app/.cxx/Debug/12w543y4/armeabi-v7a/RNImagePickerSpec_autolinked_build/cmake_install.cmake")
 
 endif()
 
