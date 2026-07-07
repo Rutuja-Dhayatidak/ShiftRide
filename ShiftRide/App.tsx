@@ -24,6 +24,7 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import VerifyAccountScreen from './src/screens/VerifyAccountScreen';
 import NewPasswordScreen from './src/screens/NewPasswordScreen';
 import { initSession } from './src/services/auth';
+import { initTheme } from './src/services/theme';
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -39,7 +40,7 @@ export type RootStackParamList = {
   ReviewSummary: { carId: string; billingData: any; paymentMethod: string; womenSafety?: boolean };
   MyBookings: undefined;
   BookingDetails: { bookingId: string };
-  ForgotPassword: undefined;
+  ForgotPassword: undefined;        
   VerifyAccount: undefined;
   NewPassword: undefined;
 };
@@ -53,12 +54,9 @@ function App() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const session = await initSession();
-        if (session && session.token) {
-          setInitialRoute('Search');
-        }
+        await Promise.all([initSession(), initTheme()]);
       } catch (err) {
-        console.error("Session check failed:", err);
+        console.error("Session/Theme check failed:", err);
       } finally {
         setLoading(false);
       }

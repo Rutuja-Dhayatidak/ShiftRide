@@ -298,6 +298,15 @@ export default function CarResultsScreen() {
     const fromLocation = route.params?.fromLoc || 'Mumbai';
     const toLocation = route.params?.toLoc || 'Pune';
 
+    const getFormattedDateRange = () => {
+        const start = new Date();
+        const end = new Date();
+        end.setDate(start.getDate() + 2); // 2 days trip
+        
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${start.getDate()} ${months[start.getMonth()]} - ${end.getDate()} ${months[end.getMonth()]}`;
+    };
+
     const scrollY = useRef(new Animated.Value(0)).current;
 
     const [selectedCategory, setSelectedCategory] = useState('All Cars');
@@ -406,19 +415,9 @@ export default function CarResultsScreen() {
                 </TouchableOpacity>
                 <View style={s.headerTitleContainer}>
                     <Text style={s.headerTitle}>Search Results</Text>
-                    <Text style={s.headerSubtitle}>24 May - 26 May • 2 Passengers</Text>
+                    <Text style={s.headerSubtitle}>{getFormattedDateRange()}</Text>
                 </View>
-                <View style={s.headerRightActions}>
-                    <TouchableOpacity style={s.headerActionCircle} activeOpacity={0.7}>
-                        <HeaderHeartIcon />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={s.headerActionCircle} activeOpacity={0.7}>
-                        <HeaderFilterIcon />
-                        <View style={s.filterBadge}>
-                            <Text style={s.filterBadgeTxt}>2</Text>
-                        </View>
-                    </TouchableOpacity>
-                </View>
+                <View style={{ width: wp(36) }} />
             </View>
 
             {/* ── Categories Scrolling Selector ── */}
@@ -492,10 +491,6 @@ export default function CarResultsScreen() {
 
                 <View style={s.resultsMetaRow}>
                     <Text style={s.resultsCount}>{filteredCars.length} Cars Found</Text>
-                    <View style={s.verifiedRow}>
-                        <Text style={s.verifiedCheck}>🛡️</Text>
-                        <Text style={s.verifiedText}>All cars are verified & insured</Text>
-                    </View>
                 </View>
 
                 {/* ── Trip Summary Card ── */}
@@ -646,7 +641,15 @@ export default function CarResultsScreen() {
                                             <TouchableOpacity 
                                                 style={s.bookNowBtn} 
                                                 activeOpacity={0.8}
-                                                onPress={() => Alert.alert('Success', `${item.name} booked successfully!`)}
+                                                onPress={() => navigation.navigate('CarDetails', { 
+                                                    carId: item.id,
+                                                    distance: item.distance,
+                                                    duration: item.duration,
+                                                    estimatedFare: item.totalPrice,
+                                                    pickup: fromLocation,
+                                                    drop: toLocation,
+                                                    womenSafety: route.params?.womenSafety || false,
+                                                })}
                                             >
                                                 <Text style={s.bookNowBtnTxt}>Book Now  &gt;</Text>
                                             </TouchableOpacity>

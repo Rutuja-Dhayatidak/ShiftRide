@@ -15,6 +15,7 @@ const Media = require("./Media");
 const Feature = require("./Feature");
 const Driver = require("./Driver");
 const DriverLocation = require("./DriverLocation");
+const MobileOffer = require("./MobileOffer");
 
 module.exports = {
   User,
@@ -34,5 +35,6 @@ module.exports = {
   Feature,
   Driver,
   DriverLocation,
+  MobileOffer,
 };
 

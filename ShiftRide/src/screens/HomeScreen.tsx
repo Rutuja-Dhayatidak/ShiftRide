@@ -1,8 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { BottomNavigation } from '../components/bottomnavigation';
+import { isDarkMode, subscribeThemeChange } from '../services/theme';
 import {
     View,
     Text,
@@ -109,6 +110,8 @@ const HomeScreen = () => {
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(16)).current;
+    const isFocused = useIsFocused();
+    const [isDark, setIsDark] = useState(isDarkMode());
 
     useEffect(() => {
         Animated.parallel([
@@ -117,11 +120,39 @@ const HomeScreen = () => {
         ]).start();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    useEffect(() => {
+        const unsubscribe = subscribeThemeChange((darkVal) => {
+            if (isFocused) {
+                setIsDark(darkVal);
+            }
+        });
+        return unsubscribe;
+    }, [isFocused]);
+
+    useEffect(() => {
+        if (isFocused) {
+            const currentDark = isDarkMode();
+            if (isDark !== currentDark) {
+                setIsDark(currentDark);
+            }
+        }
+    }, [isFocused, isDark]);
+
+    const theme = {
+        bg: isDark ? '#0F172A' : '#FAFBFD',
+        cardBg: isDark ? '#1E293B' : WHITE,
+        textMain: isDark ? WHITE : NAVY,
+        textSub: isDark ? '#94A3B8' : GRAY,
+        border: isDark ? '#334155' : BORDER,
+        divider: isDark ? '#334155' : '#F1F5F9',
+        inputBg: isDark ? '#1E293B' : WHITE,
+    };
+
 
 
     return (
-        <View style={s.screen}>
-            <StatusBar barStyle="dark-content" backgroundColor={BG} />
+        <View style={[s.screen, { backgroundColor: theme.bg }]}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.bg} />
 
             <Animated.ScrollView
                 showsVerticalScrollIndicator={false}
@@ -136,38 +167,38 @@ const HomeScreen = () => {
                             <Text style={s.avatarTxt}>AA</Text>
                         </View>
                         <View style={s.greetText}>
-                            <Text style={s.greetSub}>Good Morning  🌤</Text>
-                            <Text style={s.greetName}>Andrew Ainsley</Text>
+                            <Text style={[s.greetSub, { color: theme.textSub }]}>Good Morning  🌤</Text>
+                            <Text style={[s.greetName, { color: theme.textMain }]}>Andrew Ainsley</Text>
                         </View>
                     </View>
                     <View style={s.headerActions}>
-                        <TouchableOpacity style={s.iconBtn} activeOpacity={0.75}>
+                        <TouchableOpacity style={[s.iconBtn, isDark && { borderColor: theme.border, backgroundColor: theme.cardBg }]} activeOpacity={0.75}>
                             {/* Bell */}
                             <View style={s.bellWrap}>
-                                <View style={s.bellTop} />
-                                <View style={s.bellMid} />
-                                <View style={s.bellBot} />
+                                <View style={[s.bellTop, isDark && { backgroundColor: WHITE }]} />
+                                <View style={[s.bellMid, isDark && { backgroundColor: WHITE }]} />
+                                <View style={[s.bellBot, isDark && { backgroundColor: WHITE }]} />
                             </View>
                         </TouchableOpacity>
-                        <TouchableOpacity style={s.iconBtn} activeOpacity={0.75}>
+                        <TouchableOpacity style={[s.iconBtn, isDark && { borderColor: theme.border, backgroundColor: theme.cardBg }]} activeOpacity={0.75}>
                             {/* Heart outline */}
-                            <Text style={s.heartOutline}>♡</Text>
+                            <Text style={[s.heartOutline, { color: theme.textMain }]}>♡</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
 
                 {/* ── Search ── */}
                 <View style={s.searchRow}>
-                    <View style={s.searchBox}>
+                    <View style={[s.searchBox, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
                         {/* magnify icon */}
                         <View style={s.magnify}>
-                            <View style={s.magnifyRing} />
-                            <View style={s.magnifyHandle} />
+                            <View style={[s.magnifyRing, isDark && { borderColor: WHITE }]} />
+                            <View style={[s.magnifyHandle, isDark && { backgroundColor: WHITE }]} />
                         </View>
                         <TextInput
-                            style={s.searchInput}
+                            style={[s.searchInput, { color: theme.textMain }]}
                             placeholder="Search"
-                            placeholderTextColor={GRAY}
+                            placeholderTextColor={theme.textSub}
                             value={search}
                             onChangeText={setSearch}
                             onFocus={() => {
@@ -175,11 +206,11 @@ const HomeScreen = () => {
                             }}
                         />
                     </View>
-                    <TouchableOpacity style={s.filterIcon} activeOpacity={0.8}>
+                    <TouchableOpacity style={[s.filterIcon, isDark && { backgroundColor: '#334155', borderColor: '#334155' }]} activeOpacity={0.8}>
                         <View style={s.filterLines}>
-                            <View style={s.fLine} />
-                            <View style={[s.fLine, { width: wp(12) }]} />
-                            <View style={[s.fLine, { width: wp(8) }]} />
+                            <View style={[s.fLine, isDark && { backgroundColor: WHITE }]} />
+                            <View style={[s.fLine, { width: wp(12) }, isDark && { backgroundColor: WHITE }]} />
+                            <View style={[s.fLine, { width: wp(8) }, isDark && { backgroundColor: WHITE }]} />
                         </View>
                     </TouchableOpacity>
                 </View>
@@ -187,8 +218,8 @@ const HomeScreen = () => {
                 {/* ── Special Offers ── */}
                 <View style={s.section}>
                     <View style={s.sectionRow}>
-                        <Text style={s.sectionTitle}>Special Offers</Text>
-                        <TouchableOpacity><Text style={s.seeAll}>See All</Text></TouchableOpacity>
+                        <Text style={[s.sectionTitle, { color: theme.textMain }]}>Special Offers</Text>
+                        <TouchableOpacity><Text style={[s.seeAll, { color: theme.textSub }]}>See All</Text></TouchableOpacity>
                     </View>
 
                     {/* Offer Banner — Premium Hero Style */}
@@ -223,10 +254,10 @@ const HomeScreen = () => {
                     <View style={s.brandsGrid}>
                         {BRANDS.map(b => (
                             <TouchableOpacity key={b.id} style={s.brandCell} activeOpacity={0.75}>
-                                <View style={s.brandCircle}>
-                                    <Text style={s.brandAbbr}>{b.abbr}</Text>
+                                <View style={[s.brandCircle, isDark && { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+                                    <Text style={[s.brandAbbr, { color: theme.textMain }]}>{b.abbr}</Text>
                                 </View>
-                                <Text style={s.brandName}>{b.name}</Text>
+                                <Text style={[s.brandName, { color: theme.textSub }]}>{b.name}</Text>
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -235,8 +266,8 @@ const HomeScreen = () => {
                 {/* ── Top Deals ── */}
                 <View style={s.section}>
                     <View style={s.sectionRow}>
-                        <Text style={s.sectionTitle}>Top Deals</Text>
-                        <TouchableOpacity><Text style={s.seeAll}>See All</Text></TouchableOpacity>
+                        <Text style={[s.sectionTitle, { color: theme.textMain }]}>Top Deals</Text>
+                        <TouchableOpacity><Text style={[s.seeAll, { color: theme.textSub }]}>See All</Text></TouchableOpacity>
                     </View>
 
                     {/* Filter Chips */}
@@ -248,11 +279,11 @@ const HomeScreen = () => {
                         contentContainerStyle={s.filtersRow}
                         renderItem={({ item, index }) => (
                             <TouchableOpacity
-                                style={[s.chip, activeFilter === index && s.chipActive]}
+                                style={[s.chip, { backgroundColor: isDark ? '#334155' : CHIP_BG }, activeFilter === index && s.chipActive]}
                                 onPress={() => setFilter(index)}
                                 activeOpacity={0.8}
                             >
-                                <Text style={[s.chipTxt, activeFilter === index && s.chipTxtActive]}>
+                                <Text style={[s.chipTxt, { color: theme.textSub }, activeFilter === index && s.chipTxtActive]}>
                                     {item}
                                 </Text>
                             </TouchableOpacity>
@@ -267,7 +298,7 @@ const HomeScreen = () => {
                         keyExtractor={d => d.id}
                         contentContainerStyle={s.dealScrollRow}
                         renderItem={({ item: deal }) => (
-                            <TouchableOpacity style={s.dealCard} activeOpacity={0.92}>
+                            <TouchableOpacity style={[s.dealCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]} activeOpacity={0.92}>
                                 {/* Background photo */}
                                 <Image
                                     source={deal.image}
@@ -289,23 +320,23 @@ const HomeScreen = () => {
 
                                 {/* Bottom content */}
                                 <View style={s.dealBottom}>
-                                    <Text style={s.dealName} numberOfLines={1}>{deal.name}</Text>
+                                    <Text style={[s.dealName, { color: theme.textMain }]} numberOfLines={1}>{deal.name}</Text>
 
                                     {/* Specs row */}
                                     <View style={s.dealSpecsRow}>
-                                        <Text style={s.dealSpec}>⭐ {deal.rating} ({deal.reviews})</Text>
+                                        <Text style={[s.dealSpec, { color: theme.textSub }]}>⭐ {deal.rating} ({deal.reviews})</Text>
                                         <Text style={s.dealSpecDot}> · </Text>
-                                        <Text style={s.dealSpec}>💺 {deal.seats}</Text>
+                                        <Text style={[s.dealSpec, { color: theme.textSub }]}>💺 {deal.seats}</Text>
                                         <Text style={s.dealSpecDot}> · </Text>
-                                        <Text style={s.dealSpec}>⚙ {deal.trans}</Text>
+                                        <Text style={[s.dealSpec, { color: theme.textSub }]}>⚙ {deal.trans}</Text>
                                         <Text style={s.dealSpecDot}> · </Text>
-                                        <Text style={s.dealSpec}>⛽ {deal.fuel}</Text>
+                                        <Text style={[s.dealSpec, { color: theme.textSub }]}>⛽ {deal.fuel}</Text>
                                     </View>
 
                                     {/* Price + View Details */}
                                     <View style={s.dealPriceRow}>
                                         <View>
-                                            <Text style={s.dealPrice}>{deal.price}<Text style={s.dealPer}>/day</Text></Text>
+                                            <Text style={[s.dealPrice, { color: theme.textMain }]}>{deal.price}<Text style={[s.dealPer, { color: theme.textSub }]}>/day</Text></Text>
                                         </View>
                                         <TouchableOpacity style={s.viewDetailsBtn}>
                                             <Text style={s.viewDetailsTxt}>View Details</Text>
@@ -323,7 +354,7 @@ const HomeScreen = () => {
                 {/* ── Customer Reviews Section ── */}
                 <View style={s.section}>
                     <View style={s.sectionRow}>
-                        <Text style={s.sectionTitle}>What Our Customers Say ⭐</Text>
+                        <Text style={[s.sectionTitle, { color: theme.textMain }]}>What Our Customers Say ⭐</Text>
                     </View>
                     <FlatList
                         data={REVIEWS}
@@ -332,22 +363,22 @@ const HomeScreen = () => {
                         keyExtractor={item => item.id}
                         contentContainerStyle={s.reviewsScroll}
                         renderItem={({ item }) => (
-                            <View style={s.reviewCard}>
+                            <View style={[s.reviewCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
                                 <View style={s.reviewHeader}>
                                     <View style={s.reviewUser}>
                                         <View style={s.reviewAvatar}>
                                             <Text style={s.reviewAvatarTxt}>{item.avatar}</Text>
                                         </View>
                                         <View>
-                                            <Text style={s.reviewName}>{item.name}</Text>
-                                            <Text style={s.reviewDate}>{item.date}</Text>
+                                            <Text style={[s.reviewName, { color: theme.textMain }]}>{item.name}</Text>
+                                            <Text style={[s.reviewDate, { color: theme.textSub }]}>{item.date}</Text>
                                         </View>
                                     </View>
                                     <View style={s.reviewRatingContainer}>
                                         <Text style={s.reviewRatingTxt}>⭐ {item.rating}</Text>
                                     </View>
                                 </View>
-                                <Text style={s.reviewComment} numberOfLines={3}>
+                                <Text style={[s.reviewComment, { color: theme.textSub }]} numberOfLines={3}>
                                     "{item.comment}"
                                 </Text>
                             </View>

@@ -18,5 +18,6 @@ router.use("/media", require("./media.routes"));
 router.use("/features", require("./feature.routes"));
 router.use("/payments", require("./payment.routes"));
 router.use("/driver", require("./driver.routes"));
+router.use("/mobile-offers", require("./mobileOffer.routes"));
 
 module.exports = router;

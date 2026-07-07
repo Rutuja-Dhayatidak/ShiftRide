@@ -12,11 +12,12 @@ import {
     FlatList,
     ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { BottomNavigation } from '../components/bottomnavigation';
 import api, { getCarImageUrl } from '../services/api';
+import { isDarkMode, subscribeThemeChange } from '../services/theme';
 
 const { width } = Dimensions.get('window');
 const BASE_W = 375;
@@ -107,6 +108,36 @@ export default function MyBookingsScreen() {
     const [activeFilter, setActiveFilter] = useState('All');
     const [bookings, setBookings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const isFocused = useIsFocused();
+    const [isDark, setIsDark] = useState(isDarkMode());
+    
+    useEffect(() => {
+        const unsubscribe = subscribeThemeChange((darkVal) => {
+            if (isFocused) {
+                setIsDark(darkVal);
+            }
+        });
+        return unsubscribe;
+    }, [isFocused]);
+
+    useEffect(() => {
+        if (isFocused) {
+            const currentDark = isDarkMode();
+            if (isDark !== currentDark) {
+                setIsDark(currentDark);
+            }
+        }
+    }, [isFocused, isDark]);
+
+    const theme = {
+        bg: isDark ? '#0F172A' : '#FAFBFD',
+        cardBg: isDark ? '#1E293B' : WHITE,
+        textMain: isDark ? WHITE : NAVY,
+        textSub: isDark ? '#94A3B8' : GRAY,
+        border: isDark ? '#334155' : BORDER,
+        divider: isDark ? '#334155' : '#F1F5F9',
+        inputBg: isDark ? '#1E293B' : WHITE,
+    };
 
     useEffect(() => {
         const fetchMyBookings = async () => {
@@ -184,22 +215,20 @@ export default function MyBookingsScreen() {
     };
 
     return (
-        <View style={s.screen}>
-            <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
+        <View style={[s.screen, { backgroundColor: theme.bg }]}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={isDark ? NAVY : WHITE} />
 
             {/* Header */}
-            <View style={s.header}>
-                <TouchableOpacity style={s.circleBtn} onPress={() => navigation.goBack()}>
-                    <Text style={s.backIcon}>←</Text>
+            <View style={[s.header, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+                <TouchableOpacity style={[s.circleBtn, { backgroundColor: theme.cardBg, borderColor: theme.border }]} onPress={() => navigation.goBack()}>
+                    <Text style={[s.backIcon, { color: theme.textMain }]}>←</Text>
                 </TouchableOpacity>
-                <Text style={s.headerTitle}>My Bookings</Text>
-                <TouchableOpacity style={s.circleBtn}>
-                    <Text style={s.filterIcon}>⚙️</Text>
-                </TouchableOpacity>
+                <Text style={[s.headerTitle, { color: theme.textMain }]}>My Bookings</Text>
+                <View style={{ width: wp(36) }} />
             </View>
 
             {/* Filter Tabs */}
-            <View style={s.filterRow}>
+            <View style={[s.filterRow, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
                 <FlatList
                     data={FILTERS}
                     horizontal
@@ -210,10 +239,10 @@ export default function MyBookingsScreen() {
                         const isActive = activeFilter === item;
                         return (
                             <TouchableOpacity
-                                style={[s.filterTab, isActive && s.filterTabActive]}
+                                style={[s.filterTab, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }, isActive && s.filterTabActive]}
                                 onPress={() => setActiveFilter(item)}
                             >
-                                <Text style={[s.filterText, isActive && s.filterTextActive]}>{item}</Text>
+                                <Text style={[s.filterText, { color: isDark ? '#94A3B8' : GRAY }, isActive && s.filterTextActive]}>{item}</Text>
                             </TouchableOpacity>
                         );
                     }}
@@ -228,50 +257,50 @@ export default function MyBookingsScreen() {
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
                     {filteredBookings.length === 0 ? (
                         <View style={{ paddingVertical: wp(60), alignItems: 'center' }}>
-                            <Text style={{ fontSize: fs(14), color: GRAY, fontWeight: '600' }}>No Bookings Found</Text>
+                            <Text style={{ fontSize: fs(14), color: theme.textSub, fontWeight: '600' }}>No Bookings Found</Text>
                         </View>
                     ) : (
                         filteredBookings.map((item) => {
                             const statusTheme = getStatusStyle(item.status);
                             return (
-                                <View key={item.id} style={s.card}>
+                                <TouchableOpacity key={item.id} style={[s.card, { backgroundColor: theme.cardBg, borderColor: theme.border }]} activeOpacity={0.9} onPress={() => navigation.navigate('BookingDetails', { bookingId: item.id })}>
                                     {/* Card Header Info */}
                                     <View style={s.cardHeader}>
                                         <View style={[s.statusBadge, { backgroundColor: statusTheme.bg }]}>
                                             <Text style={[s.statusTxt, { color: statusTheme.text }]}>● {item.status}</Text>
                                         </View>
-                                        <Text style={s.bookingId}>Booking ID <Text style={{ color: NAVY }}>#{item.id.slice(-6).toUpperCase()}</Text></Text>
+                                        <Text style={[s.bookingId, { color: theme.textSub }]}>Booking ID <Text style={{ color: theme.textMain }}>#{item.id.slice(-6).toUpperCase()}</Text></Text>
                                     </View>
 
                                     {/* Car main details */}
                                     <View style={s.carDetailsRow}>
                                         <Image source={typeof item.image === 'object' ? item.image : item.image} style={s.carImg} resizeMode="contain" />
                                         <View style={{ flex: 1, paddingLeft: wp(12) }}>
-                                            <Text style={s.carName}>{item.carName}</Text>
-                                            <Text style={s.classType}>{item.classType}</Text>
+                                            <Text style={[s.carName, { color: theme.textMain }]}>{item.carName}</Text>
+                                            <Text style={[s.classType, { color: theme.textSub }]}>{item.classType}</Text>
                                             
                                             {/* Route points */}
                                             <View style={s.routeBlock}>
                                                 <View style={{ alignItems: 'center' }}>
                                                     <View style={s.greenDot} />
-                                                    <View style={s.dotLine} />
+                                                    <View style={[s.dotLine, isDark && { backgroundColor: '#475569' }]} />
                                                     <View style={s.redDot} />
                                                 </View>
                                                 <View style={{ gap: wp(4) }}>
                                                     <Text style={s.routeText}>
-                                                        <Text style={{ fontWeight: '700', color: NAVY }}>{item.fromLoc}</Text>
-                                                        <Text style={{ color: GRAY }}> ({item.fromDate})</Text>
+                                                        <Text style={{ fontWeight: '700', color: theme.textMain }}>{item.fromLoc}</Text>
+                                                        <Text style={{ color: theme.textSub }}> ({item.fromDate})</Text>
                                                     </Text>
                                                     <Text style={s.routeText}>
-                                                        <Text style={{ fontWeight: '700', color: NAVY }}>{item.toLoc}</Text>
-                                                        <Text style={{ color: GRAY }}> ({item.toDate})</Text>
+                                                        <Text style={{ fontWeight: '700', color: theme.textMain }}>{item.toLoc}</Text>
+                                                        <Text style={{ color: theme.textSub }}> ({item.toDate})</Text>
                                                     </Text>
                                                 </View>
                                             </View>
                                         </View>
                                         <View style={{ alignItems: 'flex-end' }}>
-                                            <Text style={s.priceTxt}>{item.pricePerDay}</Text>
-                                            <Text style={s.perDay}>/ day</Text>
+                                            <Text style={[s.priceTxt, { color: theme.textMain }]}>{item.pricePerDay}</Text>
+                                            <Text style={[s.perDay, { color: theme.textSub }]}>/ day</Text>
                                         </View>
                                     </View>
 
@@ -280,29 +309,29 @@ export default function MyBookingsScreen() {
                                         <View style={s.specItem}>
                                             <Text style={s.specIcon}>👤</Text>
                                             <View>
-                                                <Text style={s.specValLabel}>Passengers</Text>
-                                                <Text style={s.specVal}>{item.passengers}</Text>
+                                                <Text style={[s.specValLabel, { color: theme.textSub }]}>Passengers</Text>
+                                                <Text style={[s.specVal, { color: theme.textMain }]}>{item.passengers}</Text>
                                             </View>
                                         </View>
                                         <View style={s.specItem}>
                                             <Text style={s.specIcon}>📅</Text>
                                             <View>
-                                                <Text style={s.specValLabel}>Duration</Text>
-                                                <Text style={s.specVal}>{item.duration}</Text>
+                                                <Text style={[s.specValLabel, { color: theme.textSub }]}>Duration</Text>
+                                                <Text style={[s.specVal, { color: theme.textMain }]}>{item.duration}</Text>
                                             </View>
                                         </View>
                                         <View style={s.specItem}>
                                             <Text style={s.specIcon}>📍</Text>
                                             <View>
-                                                <Text style={s.specValLabel}>Distance</Text>
-                                                <Text style={s.specVal}>{item.distance}</Text>
+                                                <Text style={[s.specValLabel, { color: theme.textSub }]}>Distance</Text>
+                                                <Text style={[s.specVal, { color: theme.textMain }]}>{item.distance}</Text>
                                             </View>
                                         </View>
                                         <View style={s.specItem}>
                                             <Text style={s.specIcon}>💳</Text>
                                             <View>
-                                                <Text style={s.specValLabel}>Total Amount</Text>
-                                                <Text style={s.specVal}>{item.totalAmount}</Text>
+                                                <Text style={[s.specValLabel, { color: theme.textSub }]}>Total Amount</Text>
+                                                <Text style={[s.specVal, { color: theme.textMain }]}>{item.totalAmount}</Text>
                                             </View>
                                         </View>
                                     </View>
@@ -310,10 +339,10 @@ export default function MyBookingsScreen() {
                                     {/* Action Buttons */}
                                     <View style={s.btnRow}>
                                         <TouchableOpacity 
-                                            style={s.detailsBtn}
+                                            style={[s.detailsBtn, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}
                                             onPress={() => navigation.navigate('BookingDetails', { bookingId: item.id })}
                                         >
-                                            <Text style={s.detailsBtnTxt}>👁️ View Details</Text>
+                                            <Text style={[s.detailsBtnTxt, { color: theme.textMain }]}>👁️ View Details</Text>
                                         </TouchableOpacity>
 
                                         {item.status === 'Upcoming' && (
@@ -326,20 +355,16 @@ export default function MyBookingsScreen() {
                                                 <Text style={s.outlineBtnTxt}>📞 Contact Support</Text>
                                             </TouchableOpacity>
                                         )}
-                                        {item.status === 'Completed' && (
-                                            <TouchableOpacity style={s.primaryBtn}>
-                                                <Text style={s.primaryBtnTxt}>Book Again ↺</Text>
-                                            </TouchableOpacity>
-                                        )}
+
                                     </View>
-                                </View>
+                                </TouchableOpacity>
                             );
                         })
                     )}
                     <View style={{ height: wp(40) }} />
                 </ScrollView>
             )}
-            <BottomNavigation activeTab={2} setActiveTab={() => {}} />
+            <BottomNavigation activeTab={1} setActiveTab={() => {}} />
         </View>
     );
 }

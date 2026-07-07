@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { BottomNavigation } from '../components/bottomnavigation';
 import { getSessionUser, setSession } from '../services/auth';
+import { isDarkMode, setDarkMode, subscribeThemeChange } from '../services/theme';
 
 const { width } = Dimensions.get('window');
 const BASE_W = 375;
@@ -104,10 +105,10 @@ const CustomBellIcon = ({ color }: { color: string }) => (
 );
 
 // Moon Icon (replacing 🌙)
-const CustomMoonIcon = ({ color }: { color: string }) => (
+const CustomMoonIcon = ({ color, bg = WHITE }: { color: string, bg?: string }) => (
     <View style={{ width: wp(16), height: wp(16), borderRadius: wp(8), backgroundColor: color, position: 'relative' }}>
         {/* Overlay to create crescent */}
-        <View style={{ position: 'absolute', top: -wp(2), left: -wp(2), width: wp(14), height: wp(14), borderRadius: wp(7), backgroundColor: WHITE }} />
+        <View style={{ position: 'absolute', top: -wp(2), left: -wp(2), width: wp(14), height: wp(14), borderRadius: wp(7), backgroundColor: bg }} />
     </View>
 );
 
@@ -136,7 +137,7 @@ export default function ProfileScreen() {
     const navigation = useNavigation<NavigationProp>();
     const [activeTab, setActiveTab] = useState(4); // Profile tab is 4
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-    const [darkModeEnabled, setDarkModeEnabled] = useState(false);
+    const [darkModeEnabled, setDarkModeEnabled] = useState(isDarkMode());
 
     // Entrance Animation Values
     const headerFade = useRef(new Animated.Value(0)).current;
@@ -155,6 +156,11 @@ export default function ProfileScreen() {
                 Animated.timing(contentTranslateY, { toValue: 0, duration: 200, useNativeDriver: true }),
             ]),
         ]).start();
+
+        const unsubscribe = subscribeThemeChange((isDark) => {
+            setDarkModeEnabled(isDark);
+        });
+        return unsubscribe;
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const sessionUser = getSessionUser();
@@ -168,6 +174,16 @@ export default function ProfileScreen() {
         wallet: '$248.50',
     };
 
+    const isDark = darkModeEnabled;
+    const theme = {
+        bg: isDark ? '#0F172A' : '#FAFBFD',
+        cardBg: isDark ? '#1E293B' : WHITE,
+        textMain: isDark ? WHITE : NAVY,
+        textSub: isDark ? '#94A3B8' : GRAY,
+        border: isDark ? '#334155' : 'rgba(234, 237, 244, 0.7)',
+        menuIconBg: isDark ? '#334155' : '#F8FAFC',
+    };
+
     const initials = userProfile.name
         .split(' ')
         .filter(Boolean)
@@ -177,7 +193,7 @@ export default function ProfileScreen() {
         .toUpperCase() || 'AA';
 
     return (
-        <View style={s.screen}>
+        <View style={[s.screen, { backgroundColor: theme.bg }]}>
             {/* Dark status bar to match navy header */}
             <StatusBar barStyle="light-content" backgroundColor={NAVY} />
 
@@ -202,7 +218,7 @@ export default function ProfileScreen() {
                             <View style={s.avatar}>
                                 <Text style={s.avatarTxt}>{initials}</Text>
                             </View>
-                            <View style={s.onlineBadge} />
+                            <View style={[s.onlineBadge, isDark && { borderColor: '#1E293B' }]} />
                         </View>
                         <View style={s.profileInfo}>
                             <Text style={s.profileName}>{userProfile.name}</Text>
@@ -218,28 +234,28 @@ export default function ProfileScreen() {
                 <Animated.View style={{ opacity: contentFade, transform: [{ translateY: contentTranslateY }] }}>
                     
                     {/* ── Floating Stats Card ── */}
-                    <View style={s.statsContainer}>
+                    <View style={[s.statsContainer, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
                         <View style={s.statBox}>
                             <View style={s.statIconWrapper}>
                                 <CustomWalletIcon color={BLUE} />
                             </View>
-                            <Text style={s.statVal}>{userProfile.wallet}</Text>
+                            <Text style={[s.statVal, { color: theme.textMain }]}>{userProfile.wallet}</Text>
                             <Text style={s.statLabel}>Wallet</Text>
                         </View>
-                        <View style={s.statDivider} />
+                        <View style={[s.statDivider, { backgroundColor: theme.border }]} />
                         <View style={s.statBox}>
                             <View style={s.statIconWrapper}>
                                 <CustomCarIcon color="#10B981" />
                             </View>
-                            <Text style={s.statVal}>{userProfile.trips}</Text>
+                            <Text style={[s.statVal, { color: theme.textMain }]}>{userProfile.trips}</Text>
                             <Text style={s.statLabel}>Trips</Text>
                         </View>
-                        <View style={s.statDivider} />
+                        <View style={[s.statDivider, { backgroundColor: theme.border }]} />
                         <View style={s.statBox}>
                             <View style={s.statIconWrapper}>
                                 <CustomStarIcon color={GOLD} />
                             </View>
-                            <Text style={s.statVal}>{userProfile.rating}</Text>
+                            <Text style={[s.statVal, { color: theme.textMain }]}>{userProfile.rating}</Text>
                             <Text style={s.statLabel}>Rating</Text>
                         </View>
                     </View>
@@ -247,44 +263,44 @@ export default function ProfileScreen() {
                     {/* ── Account Settings Section ── */}
                     <View style={s.section}>
                         <View style={s.sectionHeader}>
-                            <Text style={s.sectionTitle}>Account Settings</Text>
-                            <View style={s.titleBar} />
+                            <Text style={[s.sectionTitle, { color: theme.textMain }]}>Account Settings</Text>
+                            <View style={[s.titleBar, { backgroundColor: theme.border }]} />
                         </View>
 
-                        <TouchableOpacity style={s.menuItem} activeOpacity={0.75}>
+                        <TouchableOpacity style={[s.menuItem, { backgroundColor: theme.cardBg, borderColor: theme.border }]} activeOpacity={0.75}>
                             <View style={s.menuLeft}>
-                                <View style={[s.menuIconBg, { backgroundColor: '#EEF2FF' }]}>
-                                    <CustomUserIcon color="#4F46E5" />
+                                <View style={[s.menuIconBg, { backgroundColor: isDark ? '#334155' : '#EEF2FF' }]}>
+                                    <CustomUserIcon color={isDark ? '#818CF8' : '#4F46E5'} />
                                 </View>
                                 <View style={s.menuTextContent}>
-                                    <Text style={s.menuTitle}>Personal Information</Text>
-                                    <Text style={s.menuSubtitle}>Manage your profile details</Text>
+                                    <Text style={[s.menuTitle, { color: theme.textMain }]}>Personal Information</Text>
+                                    <Text style={[s.menuSubtitle, { color: theme.textSub }]}>Manage your profile details</Text>
                                 </View>
                             </View>
                             <Text style={s.chevron}>›</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={s.menuItem} activeOpacity={0.75}>
+                        <TouchableOpacity style={[s.menuItem, { backgroundColor: theme.cardBg, borderColor: theme.border }]} activeOpacity={0.75}>
                             <View style={s.menuLeft}>
-                                <View style={[s.menuIconBg, { backgroundColor: '#ECFDF5' }]}>
+                                <View style={[s.menuIconBg, { backgroundColor: isDark ? '#1E293B' : '#ECFDF5' }]}>
                                     <CustomWalletIcon color="#10B981" />
                                 </View>
                                 <View style={s.menuTextContent}>
-                                    <Text style={s.menuTitle}>Payment Methods</Text>
-                                    <Text style={s.menuSubtitle}>Saved cards and payment accounts</Text>
+                                    <Text style={[s.menuTitle, { color: theme.textMain }]}>Payment Methods</Text>
+                                    <Text style={[s.menuSubtitle, { color: theme.textSub }]}>Saved cards and payment accounts</Text>
                                 </View>
                             </View>
                             <Text style={s.chevron}>›</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={s.menuItem} activeOpacity={0.75} onPress={() => navigation.navigate('Home')}>
+                        <TouchableOpacity style={[s.menuItem, { backgroundColor: theme.cardBg, borderColor: theme.border }]} activeOpacity={0.75} onPress={() => navigation.navigate('Home')}>
                             <View style={s.menuLeft}>
-                                <View style={[s.menuIconBg, { backgroundColor: '#EFF6FF' }]}>
+                                <View style={[s.menuIconBg, { backgroundColor: isDark ? '#1E293B' : '#EFF6FF' }]}>
                                     <CustomCarIcon color={BLUE} />
                                 </View>
                                 <View style={s.menuTextContent}>
-                                    <Text style={s.menuTitle}>My Bookings</Text>
-                                    <Text style={s.menuSubtitle}>Active, pending, and past rentals</Text>
+                                    <Text style={[s.menuTitle, { color: theme.textMain }]}>My Bookings</Text>
+                                    <Text style={[s.menuSubtitle, { color: theme.textSub }]}>Active, pending, and past rentals</Text>
                                 </View>
                             </View>
                             <Text style={s.chevron}>›</Text>
@@ -294,18 +310,18 @@ export default function ProfileScreen() {
                     {/* ── Preferences Section ── */}
                     <View style={s.section}>
                         <View style={s.sectionHeader}>
-                            <Text style={s.sectionTitle}>Preferences</Text>
-                            <View style={s.titleBar} />
+                            <Text style={[s.sectionTitle, { color: theme.textMain }]}>Preferences</Text>
+                            <View style={[s.titleBar, { backgroundColor: theme.border }]} />
                         </View>
 
-                        <View style={s.menuItemNonClickable}>
+                        <View style={[s.menuItemNonClickable, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
                             <View style={s.menuLeft}>
-                                <View style={[s.menuIconBg, { backgroundColor: '#FFF7ED' }]}>
-                                    <CustomBellIcon color="#F97316" />
+                                <View style={[s.menuIconBg, { backgroundColor: isDark ? '#334155' : '#FFF7ED' }]}>
+                                    <CustomBellIcon color={isDark ? '#FDBA74' : '#F97316'} />
                                 </View>
                                 <View style={s.menuTextContent}>
-                                    <Text style={s.menuTitle}>Notifications</Text>
-                                    <Text style={s.menuSubtitle}>Get updates on deals and rides</Text>
+                                    <Text style={[s.menuTitle, { color: theme.textMain }]}>Notifications</Text>
+                                    <Text style={[s.menuSubtitle, { color: theme.textSub }]}>Get updates on deals and rides</Text>
                                 </View>
                             </View>
                             <Switch
@@ -316,40 +332,44 @@ export default function ProfileScreen() {
                             />
                         </View>
 
-                        <View style={s.menuItemNonClickable}>
+                        <TouchableOpacity
+                            style={[s.menuItemNonClickable, { backgroundColor: theme.cardBg, borderColor: theme.border }]}
+                            activeOpacity={0.8}
+                            onPress={() => setDarkMode(!darkModeEnabled)}
+                        >
                             <View style={s.menuLeft}>
-                                <View style={[s.menuIconBg, { backgroundColor: '#F8FAFC' }]}>
-                                    <CustomMoonIcon color="#64748B" />
+                                <View style={[s.menuIconBg, { backgroundColor: theme.menuIconBg }]}>
+                                    <CustomMoonIcon color={isDark ? '#94A3B8' : '#64748B'} bg={theme.menuIconBg} />
                                 </View>
                                 <View style={s.menuTextContent}>
-                                    <Text style={s.menuTitle}>Dark Mode</Text>
-                                    <Text style={s.menuSubtitle}>Switch app presentation style</Text>
+                                    <Text style={[s.menuTitle, { color: theme.textMain }]}>Dark Mode</Text>
+                                    <Text style={[s.menuSubtitle, { color: theme.textSub }]}>Switch app presentation style</Text>
                                 </View>
                             </View>
                             <Switch
                                 value={darkModeEnabled}
-                                onValueChange={setDarkModeEnabled}
+                                onValueChange={(val) => setDarkMode(val)}
                                 trackColor={{ false: '#E2E8F0', true: BLUE }}
                                 thumbColor={WHITE}
                             />
-                        </View>
+                        </TouchableOpacity>
                     </View>
 
                     {/* ── Support & Legal ── */}
                     <View style={s.section}>
                         <View style={s.sectionHeader}>
-                            <Text style={s.sectionTitle}>Support & Legal</Text>
-                            <View style={s.titleBar} />
+                            <Text style={[s.sectionTitle, { color: theme.textMain }]}>Support & Legal</Text>
+                            <View style={[s.titleBar, { backgroundColor: theme.border }]} />
                         </View>
 
-                        <TouchableOpacity style={s.menuItem} activeOpacity={0.75}>
+                        <TouchableOpacity style={[s.menuItem, { backgroundColor: theme.cardBg, borderColor: theme.border }]} activeOpacity={0.75}>
                             <View style={s.menuLeft}>
-                                <View style={[s.menuIconBg, { backgroundColor: '#ECFEFF' }]}>
+                                <View style={[s.menuIconBg, { backgroundColor: isDark ? '#1E293B' : '#ECFEFF' }]}>
                                     <CustomShieldIcon color="#0891B2" />
                                 </View>
                                 <View style={s.menuTextContent}>
-                                    <Text style={s.menuTitle}>Privacy Policy</Text>
-                                    <Text style={s.menuSubtitle}>Data privacy and terms of service</Text>
+                                    <Text style={[s.menuTitle, { color: theme.textMain }]}>Privacy Policy</Text>
+                                    <Text style={[s.menuSubtitle, { color: theme.textSub }]}>Data privacy and terms of service</Text>
                                 </View>
                             </View>
                             <Text style={s.chevron}>›</Text>
@@ -357,7 +377,7 @@ export default function ProfileScreen() {
 
                         {/* Red themed elegant logout button */}
                         <TouchableOpacity 
-                            style={s.logoutBtn} 
+                            style={[s.logoutBtn, isDark && { backgroundColor: '#311E1E', borderColor: '#5C3A3A' }]} 
                             activeOpacity={0.8} 
                             onPress={async () => {
                                 await setSession(null, null);

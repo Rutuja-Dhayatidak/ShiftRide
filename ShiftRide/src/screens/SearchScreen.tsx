@@ -16,7 +16,7 @@ import {
     ActivityIndicator,
     Linking,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { BottomNavigation } from '../components/bottomnavigation';
@@ -25,6 +25,9 @@ import { getAllCars } from '../services/Car';
 import api, { getCarImageUrl } from '../services/api';
 import { initiatePaymentForBooking, verifyPayment } from '../services/payment';
 import RazorpayCheckout from 'react-native-razorpay';
+import { getActiveOffers } from '../services/mobileOffer';
+import { getSessionUser } from '../services/auth';
+import { isDarkMode, subscribeThemeChange } from '../services/theme';
 
 const { width, height } = Dimensions.get('window');
 const BASE_W = 375;
@@ -127,6 +130,38 @@ const SearchScreen = () => {
     const [activeTab, setActiveTab] = useState(0);
     const [selectedVehicle, setSelectedVehicle] = useState('Mobil');
     const [popularCars, setPopularCars] = useState<any[]>(POPULAR_CARS);
+    const [mobileOffers, setMobileOffers] = useState<any[]>([]);
+    const [userProfile, setUserProfile] = useState<any>(null);
+    const isFocused = useIsFocused();
+    const [isDark, setIsDark] = useState(isDarkMode());
+    
+    useEffect(() => {
+        const unsubscribe = subscribeThemeChange((darkVal) => {
+            if (isFocused) {
+                setIsDark(darkVal);
+            }
+        });
+        return unsubscribe;
+    }, [isFocused]);
+
+    useEffect(() => {
+        if (isFocused) {
+            const currentDark = isDarkMode();
+            if (isDark !== currentDark) {
+                setIsDark(currentDark);
+            }
+        }
+    }, [isFocused, isDark]);
+
+    const theme = {
+        bg: isDark ? '#0F172A' : '#FAFBFD',
+        cardBg: isDark ? '#1E293B' : WHITE,
+        textMain: isDark ? WHITE : NAVY,
+        textSub: isDark ? '#94A3B8' : GRAY,
+        border: isDark ? '#334155' : BORDER,
+        divider: isDark ? '#334155' : '#F1F5F9',
+        inputBg: isDark ? '#1E293B' : WHITE,
+    };
 
     const [isOtpVerified, setIsOtpVerified] = useState(false);
     const successScale = useRef(new Animated.Value(0)).current;
@@ -140,7 +175,7 @@ const SearchScreen = () => {
             setPaymentLoading(true);
             const bookingId = booking.id || booking._id;
             const res = await initiatePaymentForBooking(bookingId);
-            
+
             if (res && res.razorpayOrderId) {
                 const options = {
                     description: `Payment for booking ${bookingId}`,
@@ -260,11 +295,36 @@ const SearchScreen = () => {
                 console.error("Failed to load popular cars:", err);
             }
         };
-        fetchPopularCars();
+
+        const fetchOffers = async () => {
+            try {
+                const data = await getActiveOffers();
+                if (data && Array.isArray(data)) {
+                    setMobileOffers(data);
+                }
+            } catch (err) {
+                console.error("Failed to load mobile offers:", err);
+            }
+        };
+
+        const timer = setTimeout(() => {
+            fetchPopularCars();
+            fetchOffers();
+        }, 400);
+
+        return () => clearTimeout(timer);
     }, []);
 
     useFocusEffect(
         React.useCallback(() => {
+            const checkUserProfile = () => {
+                const user = getSessionUser();
+                if (user) {
+                    setUserProfile(user);
+                }
+            };
+            checkUserProfile();
+
             const fetchActiveBooking = async () => {
                 try {
                     const response = await api.get('/bookings/mybookings');
@@ -331,17 +391,22 @@ const SearchScreen = () => {
                     console.error("Failed to fetch active booking for home screen:", err);
                 }
             };
-            fetchActiveBooking();
+            
+            let intervalId: any;
+            const timer = setTimeout(() => {
+                fetchActiveBooking();
+                intervalId = setInterval(fetchActiveBooking, 2000);
+            }, 350);
 
-            // Set up silent polling every 2 seconds to catch driver acceptance or OTP verification instantly
-            const intervalId = setInterval(fetchActiveBooking, 2000);
-
-            return () => clearInterval(intervalId);
+            return () => {
+                clearTimeout(timer);
+                if (intervalId) clearInterval(intervalId);
+            };
         }, [successScale, cardOpacity])
     );
 
     return (
-        <View style={s.screen}>
+        <View style={[s.screen, { backgroundColor: theme.bg }]}>
             <StatusBar barStyle="light-content" backgroundColor={NAVY} />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContainer}>
@@ -364,10 +429,9 @@ const SearchScreen = () => {
 
                     <View style={s.headerMetaRow}>
                         <View style={{ flex: 1 }}>
-                            <Text style={s.userGreeting}>Hello, Rio Ananda 👋</Text>
-                            <Text style={s.userTitle}>Mau kemana{`\n`}kamu hari ini?</Text>
+                            <Text style={s.userGreeting}>Hello, {userProfile?.name?.split(' ')[0] || 'Guest'} 👋</Text>
+                            <Text style={s.userTitle}>Where would you{`\n`}like to go today?</Text>
                             <View style={s.blueHighlightLine} />
-
                         </View>
 
                         {/* Right Column: Avatar */}
@@ -375,7 +439,12 @@ const SearchScreen = () => {
                             {/* Rounded avatar */}
                             <View style={s.avatarContainer}>
                                 <View style={s.avatar}>
-                                    <Text style={s.avatarTxt}>RA</Text>
+                                    <Text style={s.avatarTxt}>
+                                        {userProfile?.name
+                                            ? userProfile.name.split(' ').filter(Boolean).map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+                                            : 'RA'
+                                        }
+                                    </Text>
                                 </View>
                             </View>
                         </View>
@@ -385,9 +454,9 @@ const SearchScreen = () => {
                 <Animated.View style={{ opacity: contentFade, transform: [{ translateY: contentSlide }] }}>
                     {/* ── Floating Booking Form Card ── */}
                     <View style={s.formContainer}>
-                        <View style={s.bookingCard}>
+                        <View style={[s.bookingCard, { backgroundColor: theme.cardBg, shadowColor: isDark ? '#000' : '#0F172A' }]}>
                             {/* Unified Destination Box */}
-                            <View style={s.destinationBox}>
+                            <View style={[s.destinationBox, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
                                 {/* Dotted Line Connector */}
                                 <View style={s.dottedConnector}>
                                     <Text style={s.dotChar}>┆</Text>
@@ -401,7 +470,7 @@ const SearchScreen = () => {
                                     <View style={s.destTextCol}>
                                         <Text style={[s.destLabel, { color: '#6C63FF' }]}>FROM</Text>
                                         <TextInput
-                                            style={[s.destTitle, { padding: 0 }]}
+                                            style={[s.destTitle, { padding: 0, color: theme.textMain }]}
                                             value={fromLoc}
                                             onChangeText={(val) => {
                                                 setFromLoc(val);
@@ -411,14 +480,14 @@ const SearchScreen = () => {
                                                 }
                                             }}
                                             placeholder="Enter Location"
-                                            placeholderTextColor={GRAY}
+                                            placeholderTextColor={theme.textSub}
                                         />
 
                                     </View>
                                 </View>
 
                                 {/* Separator Line */}
-                                <View style={s.horizontalDivider} />
+                                <View style={[s.horizontalDivider, { backgroundColor: theme.divider }]} />
 
                                 {/* To Row */}
                                 <View style={s.destinationRow}>
@@ -428,7 +497,7 @@ const SearchScreen = () => {
                                     <View style={s.destTextCol}>
                                         <Text style={[s.destLabel, { color: '#10B981' }]}>TO</Text>
                                         <TextInput
-                                            style={[s.destTitle, { padding: 0 }]}
+                                            style={[s.destTitle, { padding: 0, color: theme.textMain }]}
                                             value={toLoc}
                                             onChangeText={(val) => {
                                                 setToLoc(val);
@@ -438,7 +507,7 @@ const SearchScreen = () => {
                                                 }
                                             }}
                                             placeholder="Enter destination"
-                                            placeholderTextColor={GRAY}
+                                            placeholderTextColor={theme.textSub}
                                         />
 
                                     </View>
@@ -475,14 +544,14 @@ const SearchScreen = () => {
                                     <View style={s.inputRow}>
                                         <View style={[s.iconWrapper, { backgroundColor: '#FFF7ED' }]}><Text style={s.inputIcon}>📅</Text></View>
                                         <View>
-                                            <Text style={s.dateMainText}>{date}</Text>
-                                            <Text style={s.dateSubText}>{dayOfWeek}</Text>
+                                            <Text style={[s.dateMainText, { color: theme.textMain }]}>{date}</Text>
+                                            <Text style={[s.dateSubText, { color: theme.textSub }]}>{dayOfWeek}</Text>
                                         </View>
                                     </View>
                                 </TouchableOpacity>
 
                                 {/* Vertical divider */}
-                                <View style={s.verticalDivider} />
+                                <View style={[s.verticalDivider, { backgroundColor: theme.border }]} />
 
                                 <TouchableOpacity
                                     style={s.dateCol}
@@ -493,17 +562,17 @@ const SearchScreen = () => {
                                     <View style={s.inputRow}>
                                         <View style={[s.iconWrapper, { backgroundColor: '#ECE9FE' }]}><Text style={s.inputIcon}>🕒</Text></View>
                                         <View>
-                                            <Text style={s.dateMainText}>{time}</Text>
-                                            <Text style={s.dateSubText}>{timeZone}</Text>
+                                            <Text style={[s.dateMainText, { color: theme.textMain }]}>{time}</Text>
+                                            <Text style={[s.dateSubText, { color: theme.textSub }]}>{timeZone}</Text>
                                         </View>
                                     </View>
                                 </TouchableOpacity>
 
                                 {/* Vertical divider */}
-                                <View style={s.verticalDivider} />
+                                <View style={[s.verticalDivider, { backgroundColor: theme.border }]} />
 
                                 <View style={s.toggleContainer}>
-                                    <Text style={s.toggleLabel}>Women Safety?</Text>
+                                    <Text style={[s.toggleLabel, { color: theme.textSub }]}>Women Safety?</Text>
                                     <Switch
                                         value={womenSafety}
                                         onValueChange={setWomenSafety}
@@ -597,41 +666,115 @@ const SearchScreen = () => {
                     {/* ── Special Offers ── */}
                     <View style={s.section}>
                         <View style={s.sectionRow}>
-                            <Text style={s.sectionTitle}>Special Offers</Text>
-                            <TouchableOpacity><Text style={s.seeAll}>See All</Text></TouchableOpacity>
+                            <Text style={[s.sectionTitle, { color: theme.textMain }]}>Special Offers</Text>
+                            <TouchableOpacity><Text style={[s.seeAll, { color: theme.textSub }]}>See All</Text></TouchableOpacity>
                         </View>
 
-                        {/* Offer Banner — Premium Hero Style */}
-                        <View style={s.offerBanner}>
-                            {/* Full bleed car photo as background-right */}
-                            <Image
-                                source={require('../assets/images/banner_car.png')}
-                                style={s.offerCarBgImage}
-                                resizeMode="cover"
-                            />
+                        {mobileOffers.length > 0 ? (
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={{ gap: wp(12) }}
+                            >
+                                {mobileOffers.map((offer) => (
+                                    <View key={offer._id || offer.id} style={[s.premiumOfferBanner, { width: width - wp(40) }]}>
+                                        {/* Background Image */}
+                                        <Image
+                                            source={offer.backgroundImage ? { uri: offer.backgroundImage } : require('../assets/images/banner_car.png')}
+                                            style={s.offerCarBgImage}
+                                            resizeMode="cover"
+                                        />
 
-                            {/* Left: text content */}
-                            <View style={s.offerLeft}>
-                                <View style={s.premiumLabel}>
-                                    <Text style={s.premiumLabelText}>PREMIUM CAR RENTALS</Text>
+                                        {/* Glass Card Container */}
+                                        <View style={s.premiumGlassCard}>
+                                            {/* Top row badge */}
+                                            <View style={s.premiumBadge}>
+                                                <Text style={s.premiumBadgeTxt}>🕒 Limited Time</Text>
+                                            </View>
+
+                                            {/* Title & description */}
+                                            <View style={{ gap: wp(4), paddingRight: wp(15) }}>
+                                                <Text style={s.premiumTitle} numberOfLines={2}>{offer.title}</Text>
+                                                <Text style={s.premiumDesc} numberOfLines={2}>{offer.description}</Text>
+                                            </View>
+
+                                            {/* Code Container */}
+                                            {offer.offerCode && (
+                                                <View style={s.premiumCodeRow}>
+                                                    <Text style={s.premiumCodeIcon}>🎫</Text>
+                                                    <Text style={s.premiumCodeTxt}>CODE: {offer.offerCode}</Text>
+                                                </View>
+                                            )}
+
+                                            {/* Validity row */}
+                                            {offer.offerDays && (
+                                                <View style={s.premiumValidityRow}>
+                                                    <Text style={{ fontSize: fs(10) }}>📅</Text>
+                                                    <Text style={s.premiumValidityTxt}>Valid for {offer.offerDays} days</Text>
+                                                </View>
+                                            )}
+
+                                            {/* Book Now Button */}
+                                            <TouchableOpacity
+                                                style={s.premiumBtn}
+                                                activeOpacity={0.85}
+                                                onPress={() => navigation.navigate('CarResults', {
+                                                    fromLoc: fromLoc.trim() ? fromLoc : 'Mumbai',
+                                                    toLoc: toLoc.trim() ? toLoc : 'Pune',
+                                                    womenSafety: womenSafety,
+                                                })}
+                                            >
+                                                <Text style={{ fontSize: fs(11) }}>📅</Text>
+                                                <Text style={s.premiumBtnTxt}>Book Now  →</Text>
+                                            </TouchableOpacity>
+
+                                            {/* Discount Circle Badge */}
+                                            {offer.discountText && (
+                                                <View style={s.premiumCircleBadge}>
+                                                    <Text style={s.premiumCircleTxtSmall}>Flat</Text>
+                                                    <Text style={s.premiumCircleTxtLarge}>
+                                                        {offer.discountText.replace(/Flat/gi, '').replace(/Off/gi, '').trim()}
+                                                    </Text>
+                                                    <Text style={s.premiumCircleTxtSmall}>OFF</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    </View>
+                                ))}
+                            </ScrollView>
+                        ) : (
+                            /* Offer Banner — Premium Hero Style */
+                            <View style={s.offerBanner}>
+                                {/* Full bleed car photo as background-right */}
+                                <Image
+                                    source={require('../assets/images/banner_car.png')}
+                                    style={s.offerCarBgImage}
+                                    resizeMode="cover"
+                                />
+
+                                {/* Left: text content */}
+                                <View style={s.offerLeft}>
+                                    <View style={s.premiumLabel}>
+                                        <Text style={s.premiumLabelText}>PREMIUM CAR RENTALS</Text>
+                                    </View>
+                                    <Text style={s.offerHeadline}>Drive the City</Text>
+                                    <Text style={s.offerHeadlineItalic}>in Style</Text>
+                                    <Text style={s.offerDesc}>
+                                        Curated cars. Unmatched{`\n`}comfort. Anytime, anywhere.
+                                    </Text>
+                                    <TouchableOpacity style={s.bookNowBtn} activeOpacity={0.85}>
+                                        <Text style={s.bookNowText}>Book Now</Text>
+                                        <Text style={s.bookNowArrow}> →</Text>
+                                    </TouchableOpacity>
                                 </View>
-                                <Text style={s.offerHeadline}>Drive the City</Text>
-                                <Text style={s.offerHeadlineItalic}>in Style</Text>
-                                <Text style={s.offerDesc}>
-                                    Curated cars. Unmatched{`\n`}comfort. Anytime, anywhere.
-                                </Text>
-                                <TouchableOpacity style={s.bookNowBtn} activeOpacity={0.85}>
-                                    <Text style={s.bookNowText}>Book Now</Text>
-                                    <Text style={s.bookNowArrow}> →</Text>
-                                </TouchableOpacity>
                             </View>
-                        </View>
+                        )}
                     </View>
                     {/* ── Top Brands ── */}
                     <View style={{ marginBottom: wp(22) }}>
                         <View style={[s.sectionRow, { paddingHorizontal: wp(20) }]}>
-                            <Text style={s.sectionTitle}>Top Brands</Text>
-                            <TouchableOpacity><Text style={s.seeAll}>See All</Text></TouchableOpacity>
+                            <Text style={[s.sectionTitle, { color: theme.textMain }]}>Top Brands</Text>
+                            <TouchableOpacity><Text style={[s.seeAll, { color: theme.textSub }]}>See All</Text></TouchableOpacity>
                         </View>
 
                         <ScrollView
@@ -641,10 +784,10 @@ const SearchScreen = () => {
                         >
                             {BRANDS_DATA.map((b, idx) => (
                                 <TouchableOpacity key={b.id} style={[s.brandItem, idx === 0 && { marginLeft: wp(20) }]} activeOpacity={0.75}>
-                                    <View style={s.brandIconCircle}>
+                                    <View style={[s.brandIconCircle, isDark && { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
                                         <Text style={s.brandIconText}>{b.icon}</Text>
                                     </View>
-                                    <Text style={s.brandNameLabel}>{b.name}</Text>
+                                    <Text style={[s.brandNameLabel, { color: theme.textSub }]}>{b.name}</Text>
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
@@ -653,8 +796,17 @@ const SearchScreen = () => {
                     {/* ── Popular Cars ── */}
                     <View style={{ marginBottom: wp(30) }}>
                         <View style={[s.sectionRow, { paddingHorizontal: wp(20) }]}>
-                            <Text style={s.sectionTitle}>Popular Cars</Text>
-                            <TouchableOpacity><Text style={s.seeAll}>See All</Text></TouchableOpacity>
+                            <Text style={[s.sectionTitle, { color: theme.textMain }]}>Popular Cars</Text>
+                            <TouchableOpacity
+                                onPress={() => navigation.navigate('CarResults', {
+                                    fromLoc: fromLoc.trim() ? fromLoc : 'Mumbai',
+                                    toLoc: toLoc.trim() ? toLoc : 'Pune',
+                                    womenSafety: womenSafety,
+                                })}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[s.seeAll, { color: theme.textSub }]}>See All</Text>
+                            </TouchableOpacity>
                         </View>
 
                         <ScrollView
@@ -663,9 +815,9 @@ const SearchScreen = () => {
                             contentContainerStyle={s.carsHorizontalScroll}
                         >
                             {popularCars.map((car, idx) => (
-                                <View key={car.id} style={[s.carCard, idx === 0 && { marginLeft: wp(20) }]}>
+                                <View key={car.id} style={[s.carCard, { backgroundColor: theme.cardBg, borderColor: theme.border }, idx === 0 && { marginLeft: wp(20) }]}>
                                     {/* Image Wrapper with light background */}
-                                    <View style={s.carImageWrapper}>
+                                    <View style={[s.carImageWrapper, isDark && { backgroundColor: '#334155' }]}>
                                         {/* Heart outline top right */}
                                         <TouchableOpacity style={s.favoriteHeart}>
                                             <Text style={s.heartIconSymbol}>♡</Text>
@@ -680,20 +832,20 @@ const SearchScreen = () => {
                                     </View>
 
                                     {/* Details */}
-                                    <Text style={s.carCardTitle}>{car.name}</Text>
-                                    <Text style={s.carCardSubtitle}>{car.type}</Text>
+                                    <Text style={[s.carCardTitle, { color: theme.textMain }]}>{car.name}</Text>
+                                    <Text style={[s.carCardSubtitle, { color: theme.textSub }]}>{car.type}</Text>
 
                                     {/* Rating Row */}
                                     <View style={s.ratingContainer}>
                                         <Text style={s.ratingText}>⭐ {car.rating}</Text>
-                                        <Text style={s.tripsText}>({car.trips} trips)</Text>
+                                        <Text style={[s.tripsText, { color: theme.textSub }]}>({car.trips} trips)</Text>
                                     </View>
 
                                     {/* Price & Book Now Row */}
                                     <View style={s.priceBookRow}>
                                         <Text style={s.carPrice}>
                                             {car.price}
-                                            <Text style={s.carPerDay}> / day</Text>
+                                            <Text style={[s.carPerDay, { color: theme.textSub }]}> / day</Text>
                                         </Text>
                                         <TouchableOpacity
                                             style={s.cardBookBtn}
@@ -711,7 +863,7 @@ const SearchScreen = () => {
                     {/* ── Top Routes ── */}
                     <View style={{ marginBottom: wp(30) }}>
                         <View style={[s.sectionRow, { paddingHorizontal: wp(20) }]}>
-                            <Text style={s.sectionTitle}>Top Routes</Text>
+                            <Text style={[s.sectionTitle, { color: theme.textMain }]}>Top Routes</Text>
                             <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: wp(4) }}>
                                 <Text style={[s.seeAll, { color: BLUE }]}>Explore All</Text>
                                 <Text style={{ color: BLUE, fontSize: fs(12), fontWeight: '700' }}> ›</Text>
@@ -721,10 +873,23 @@ const SearchScreen = () => {
                         <ScrollView
                             horizontal
                             showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={{ paddingRight: wp(20), gap: wp(14) }}
+                            contentContainerStyle={{ paddingRight: wp(20), gap: wp(14), paddingBottom: wp(16), paddingTop: wp(8) }}
                         >
                             {ROUTES_DATA.map((route, idx) => (
-                                <View key={route.id} style={[s.routeCard, idx === 0 && { marginLeft: wp(20) }]}>
+                                <TouchableOpacity
+                                    key={route.id}
+                                    style={[s.routeCard, { backgroundColor: theme.cardBg, borderColor: theme.border }, idx === 0 && { marginLeft: wp(20) }]}
+                                    activeOpacity={0.9}
+                                    onPress={() => {
+                                        setFromLoc(route.from);
+                                        setToLoc(route.to);
+                                        navigation.navigate('CarResults', {
+                                            fromLoc: route.from,
+                                            toLoc: route.to,
+                                            womenSafety: womenSafety,
+                                        });
+                                    }}
+                                >
                                     <Image
                                         source={route.image}
                                         style={s.routeImage}
@@ -734,29 +899,29 @@ const SearchScreen = () => {
                                     {/* Pins with Curved/Dashed Line */}
                                     <View style={s.routePinsRow}>
                                         <Text style={s.routePinIcon}>📍</Text>
-                                        <View style={s.routeDashLine} />
+                                        <View style={[s.routeDashLine, isDark && { borderColor: '#475569' }]} />
                                         <Text style={s.routePinIcon}>📍</Text>
                                     </View>
 
                                     {/* Route Names */}
                                     <View style={s.routeNamesRow}>
-                                        <Text style={s.routeName}>{route.from}</Text>
-                                        <Text style={s.routeName}>{route.to}</Text>
+                                        <Text style={[s.routeName, { color: theme.textMain }]}>{route.from}</Text>
+                                        <Text style={[s.routeName, { color: theme.textMain }]}>{route.to}</Text>
                                     </View>
 
                                     {/* Distance Badge */}
                                     <View style={s.routeDistanceBadge}>
                                         <Text style={s.routeDistanceText}>{route.distance}</Text>
                                     </View>
-                                </View>
+                                </TouchableOpacity>
                             ))}
                         </ScrollView>
                     </View>
 
                     {/* ── Safety Banner ── */}
-                    <View style={s.safetyBanner}>
+                    <View style={[s.safetyBanner, isDark && { backgroundColor: '#1E293B' }]}>
                         {/* Left: Premium Check Icon */}
-                        <View style={s.safetyIconCircle}>
+                        <View style={[s.safetyIconCircle, isDark && { backgroundColor: '#334155', borderColor: '#334155' }]}>
                             <View style={s.safetyBlueBadge}>
                                 <Text style={s.safetyCheckSymbol}>✓</Text>
                             </View>
@@ -764,8 +929,8 @@ const SearchScreen = () => {
 
                         {/* Middle: Content */}
                         <View style={s.safetyContent}>
-                            <Text style={s.safetyTitle}>Safe. Reliable. Always.</Text>
-                            <Text style={s.safetyDesc}>Well-maintained cars & verified partners for your peace of mind.</Text>
+                            <Text style={[s.safetyTitle, { color: theme.textMain }]}>Safe. Reliable. Always.</Text>
+                            <Text style={[s.safetyDesc, { color: theme.textSub }]}>Well-maintained cars & verified partners for your peace of mind.</Text>
                         </View>
 
                         {/* Right: Car Image */}
@@ -778,39 +943,39 @@ const SearchScreen = () => {
 
                     {/* ── Why Choose ShiftRide ── */}
                     <View style={s.whyChooseSection}>
-                        <Text style={[s.sectionTitle, { marginBottom: wp(18) }]}>Why Choose ShiftRide?</Text>
+                        <Text style={[s.sectionTitle, { color: theme.textMain, marginBottom: wp(18) }]}>Why Choose ShiftRide?</Text>
 
                         <View style={s.featuresRow}>
                             <View style={s.featureItem}>
-                                <View style={s.featureIconWrapper}>
+                                <View style={[s.featureIconWrapper, { backgroundColor: isDark ? '#3E341F' : '#FEF3C7' }]}>
                                     <Text style={s.featureIcon}>🎖️</Text>
                                 </View>
-                                <Text style={s.featureTitle}>Best Prices</Text>
-                                <Text style={s.featureSubtitle}>Guaranteed</Text>
+                                <Text style={[s.featureTitle, { color: theme.textMain }]}>Best Prices</Text>
+                                <Text style={[s.featureSubtitle, { color: theme.textSub }]}>Guaranteed</Text>
                             </View>
 
                             <View style={s.featureItem}>
-                                <View style={s.featureIconWrapper}>
+                                <View style={[s.featureIconWrapper, { backgroundColor: isDark ? '#1F2C3D' : '#E0F2FE' }]}>
                                     <Text style={s.featureIcon}>🚗</Text>
                                 </View>
-                                <Text style={s.featureTitle}>Wide Range</Text>
-                                <Text style={s.featureSubtitle}>Of Cars</Text>
+                                <Text style={[s.featureTitle, { color: theme.textMain }]}>Wide Range</Text>
+                                <Text style={[s.featureSubtitle, { color: theme.textSub }]}>Of Cars</Text>
                             </View>
 
                             <View style={s.featureItem}>
-                                <View style={s.featureIconWrapper}>
+                                <View style={[s.featureIconWrapper, { backgroundColor: isDark ? '#1F3B2C' : '#DCFCE7' }]}>
                                     <Text style={s.featureIcon}>🎧</Text>
                                 </View>
-                                <Text style={s.featureTitle}>24/7 Support</Text>
-                                <Text style={s.featureSubtitle}>We're here</Text>
+                                <Text style={[s.featureTitle, { color: theme.textMain }]}>24/7 Support</Text>
+                                <Text style={[s.featureSubtitle, { color: theme.textSub }]}>We're here</Text>
                             </View>
 
                             <View style={s.featureItem}>
-                                <View style={s.featureIconWrapper}>
+                                <View style={[s.featureIconWrapper, { backgroundColor: isDark ? '#3D1F30' : '#FCE7F3' }]}>
                                     <Text style={s.featureIcon}>🛡️</Text>
                                 </View>
-                                <Text style={s.featureTitle}>Secure Booking</Text>
-                                <Text style={s.featureSubtitle}>100% Safe</Text>
+                                <Text style={[s.featureTitle, { color: theme.textMain }]}>Secure Booking</Text>
+                                <Text style={[s.featureSubtitle, { color: theme.textSub }]}>100% Safe</Text>
                             </View>
                         </View>
                     </View>
@@ -890,8 +1055,8 @@ const SearchScreen = () => {
                             </View>
 
                             {/* Bottom Row: Pay Now Button */}
-                            <TouchableOpacity 
-                                style={s.uberPayBtn} 
+                            <TouchableOpacity
+                                style={s.uberPayBtn}
                                 activeOpacity={0.85}
                                 onPress={() => handlePayNow(activeBooking)}
                                 disabled={paymentLoading}
@@ -1449,9 +1614,145 @@ const s = StyleSheet.create({
         fontSize: fs(13),
         fontWeight: '700',
     },
+    // New premium offer styles
+    premiumOfferBanner: {
+        backgroundColor: '#0F172A',
+        borderRadius: wp(20),
+        overflow: 'hidden',
+        height: wp(230),
+        position: 'relative',
+    },
+    premiumGlassCard: {
+        position: 'absolute',
+        left: wp(12),
+        top: wp(12),
+        bottom: wp(12),
+        width: '58%',
+        backgroundColor: 'rgba(15, 23, 42, 0.55)',
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.18)',
+        borderRadius: wp(18),
+        paddingHorizontal: wp(14),
+        paddingVertical: wp(12),
+        zIndex: 10,
+        justifyContent: 'space-between',
+    },
+    premiumBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: wp(4),
+        borderColor: 'rgba(255, 255, 255, 0.35)',
+        borderWidth: 1,
+        borderRadius: wp(12),
+        paddingHorizontal: wp(8),
+        paddingVertical: wp(3),
+        alignSelf: 'flex-start',
+    },
+    premiumBadgeTxt: {
+        fontSize: fs(9),
+        fontWeight: '700',
+        color: 'rgba(255, 255, 255, 0.9)',
+    },
+    premiumTitle: {
+        fontSize: fs(18),
+        fontWeight: '900',
+        color: WHITE,
+        lineHeight: fs(22),
+    },
+    premiumDesc: {
+        fontSize: fs(11),
+        color: 'rgba(255, 255, 255, 0.85)',
+        lineHeight: fs(16),
+        fontWeight: '500',
+    },
+    premiumCodeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: wp(6),
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        borderWidth: 1.2,
+        borderColor: 'rgba(245, 158, 11, 0.45)',
+        borderRadius: wp(8),
+        paddingHorizontal: wp(8),
+        paddingVertical: wp(5),
+        alignSelf: 'flex-start',
+    },
+    premiumCodeIcon: {
+        fontSize: fs(13),
+        color: '#F59E0B',
+    },
+    premiumCodeTxt: {
+        fontSize: fs(10.5),
+        fontWeight: '800',
+        color: '#F59E0B',
+        letterSpacing: 0.5,
+    },
+    premiumValidityRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: wp(4),
+    },
+    premiumValidityTxt: {
+        fontSize: fs(10),
+        color: 'rgba(255, 255, 255, 0.65)',
+        fontWeight: '600',
+    },
+    premiumBtn: {
+        backgroundColor: '#F59E0B',
+        borderRadius: wp(10),
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: wp(9),
+        paddingHorizontal: wp(14),
+        alignSelf: 'flex-start',
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius: 5,
+        elevation: 3,
+        gap: wp(6),
+    },
+    premiumBtnTxt: {
+        color: '#0F172A',
+        fontSize: fs(12),
+        fontWeight: '800',
+    },
+    premiumCircleBadge: {
+        position: 'absolute',
+        right: -wp(18),
+        top: -wp(6),
+        width: wp(62),
+        height: wp(62),
+        borderRadius: wp(31),
+        backgroundColor: 'rgba(245, 158, 11, 0.28)',
+        borderWidth: 1.5,
+        borderColor: '#F59E0B',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 20,
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    premiumCircleTxtSmall: {
+        fontSize: fs(8),
+        fontWeight: '700',
+        color: '#FFF',
+    },
+    premiumCircleTxtLarge: {
+        fontSize: fs(15),
+        fontWeight: '900',
+        color: '#FFF',
+        marginVertical: -wp(2),
+    },
     brandsHorizontalScroll: {
         paddingRight: wp(20),
         gap: wp(16),
+        paddingBottom: wp(16),
+        paddingTop: wp(8),
     },
     brandItem: {
         alignItems: 'center',
@@ -1484,6 +1785,8 @@ const s = StyleSheet.create({
     carsHorizontalScroll: {
         paddingRight: wp(20),
         gap: wp(14),
+        paddingBottom: wp(16),
+        paddingTop: wp(8),
     },
     carCard: {
         width: wp(240),
@@ -1583,6 +1886,7 @@ const s = StyleSheet.create({
         backgroundColor: WHITE,
         borderRadius: wp(16),
         padding: wp(10),
+        paddingBottom: wp(16),
         borderWidth: 1,
         borderColor: BORDER,
         shadowColor: '#000',
@@ -1719,28 +2023,29 @@ const s = StyleSheet.create({
         flex: 1,
     },
     featureIconWrapper: {
-        width: wp(56),
-        height: wp(56),
-        borderRadius: wp(18),
+        width: wp(54),
+        height: wp(54),
+        borderRadius: wp(27),
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: wp(10),
-        backgroundColor: '#EFF6FF',
+        marginBottom: wp(8),
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.03)',
     },
     featureIcon: {
-        fontSize: fs(24),
+        fontSize: fs(22),
     },
     featureTitle: {
-        fontSize: fs(11),
+        fontSize: fs(10.5),
         fontWeight: '800',
         color: NAVY,
         textAlign: 'center',
+        minHeight: wp(28),
     },
     featureSubtitle: {
-        fontSize: fs(9),
+        fontSize: fs(8.5),
         color: GRAY,
         fontWeight: '600',
-        marginTop: wp(2),
         textAlign: 'center',
     },
     errorRowHighlight: {

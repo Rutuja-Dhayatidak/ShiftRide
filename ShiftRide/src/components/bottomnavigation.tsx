@@ -15,48 +15,51 @@ const GRAY_LT = '#F2F4F8';
 const WHITE = '#FFFFFF';
 const BORDER = '#EAEDF4';
 
-const ic = (active?: boolean) => active ? NAVY : GRAY;
+import { isDarkMode, subscribeThemeChange } from '../services/theme';
 
-const HouseIcon = ({ active }: { active?: boolean }) => (
+const ic = (active?: boolean, isDark?: boolean) => {
+    if (active) return isDark ? '#FFFFFF' : '#12183D';
+    return isDark ? '#94A3B8' : '#8A94A6';
+};
+
+const HouseIcon = ({ active, isDark }: { active?: boolean; isDark?: boolean }) => (
     <View style={{ alignItems: 'center', gap: wp(1.5) }}>
-        <View style={{ width: 0, height: 0, borderLeftWidth: wp(8), borderRightWidth: wp(8), borderBottomWidth: wp(7), borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: ic(active) }} />
-        <View style={{ width: wp(12), height: wp(9), backgroundColor: ic(active), borderRadius: wp(2) }} />
+        <View style={{ width: 0, height: 0, borderLeftWidth: wp(8), borderRightWidth: wp(8), borderBottomWidth: wp(7), borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: ic(active, isDark) }} />
+        <View style={{ width: wp(12), height: wp(9), backgroundColor: ic(active, isDark), borderRadius: wp(2) }} />
     </View>
 );
 
-const OrderIcon = ({ active }: { active?: boolean }) => (
+const OrderIcon = ({ active, isDark }: { active?: boolean; isDark?: boolean }) => (
     <View style={{ gap: wp(2.5) }}>
         {[wp(16), wp(12), wp(16)].map((w, i) => (
-            <View key={i} style={{ width: w, height: wp(2), backgroundColor: ic(active), borderRadius: wp(1) }} />
+            <View key={i} style={{ width: w, height: wp(2), backgroundColor: ic(active, isDark), borderRadius: wp(1) }} />
         ))}
     </View>
 );
 
-const InboxIcon = ({ active }: { active?: boolean }) => (
+const InboxIcon = ({ active, isDark }: { active?: boolean; isDark?: boolean }) => (
     <View>
-        <View style={{ width: wp(18), height: wp(14), borderRadius: wp(3), borderWidth: 2, borderColor: ic(active) }} />
+        <View style={{ width: wp(18), height: wp(14), borderRadius: wp(3), borderWidth: 2, borderColor: ic(active, isDark) }} />
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' }}>
-            <View style={{ width: wp(10), height: wp(7), borderBottomLeftRadius: wp(5), borderBottomRightRadius: wp(5), borderWidth: 2, borderTopWidth: 0, borderColor: ic(active) }} />
+            <View style={{ width: wp(10), height: wp(7), borderBottomLeftRadius: wp(5), borderBottomRightRadius: wp(5), borderWidth: 2, borderTopWidth: 0, borderColor: ic(active, isDark) }} />
         </View>
     </View>
 );
 
-const WalletIcon = ({ active }: { active?: boolean }) => (
+const WalletIcon = ({ active, isDark }: { active?: boolean; isDark?: boolean }) => (
     <View>
-        <View style={{ width: wp(20), height: wp(14), borderRadius: wp(3), borderWidth: 2, borderColor: ic(active) }}>
-            <View style={{ width: wp(6), height: wp(6), borderRadius: wp(3), borderWidth: 2, borderColor: ic(active), position: 'absolute', right: wp(2), top: wp(2), backgroundColor: ic(active) + '30' }} />
+        <View style={{ width: wp(20), height: wp(14), borderRadius: wp(3), borderWidth: 2, borderColor: ic(active, isDark) }}>
+            <View style={{ width: wp(6), height: wp(6), borderRadius: wp(3), borderWidth: 2, borderColor: ic(active, isDark), position: 'absolute', right: wp(2), top: wp(2), backgroundColor: ic(active, isDark) + '30' }} />
         </View>
     </View>
 );
 
-const PersonIcon = ({ active }: { active?: boolean }) => (
+const PersonIcon = ({ active, isDark }: { active?: boolean; isDark?: boolean }) => (
     <View style={{ alignItems: 'center', gap: wp(2) }}>
-        <View style={{ width: wp(10), height: wp(10), borderRadius: wp(5), borderWidth: 2, borderColor: ic(active) }} />
-        <View style={{ width: wp(18), height: wp(7), borderTopLeftRadius: wp(9), borderTopRightRadius: wp(9), borderWidth: 2, borderBottomWidth: 0, borderColor: ic(active) }} />
+        <View style={{ width: wp(10), height: wp(10), borderRadius: wp(5), borderWidth: 2, borderColor: ic(active, isDark) }} />
+        <View style={{ width: wp(18), height: wp(7), borderTopLeftRadius: wp(9), borderTopRightRadius: wp(9), borderWidth: 2, borderBottomWidth: 0, borderColor: ic(active, isDark) }} />
     </View>
 );
-
-
 
 interface BottomNavigationProps {
     activeTab: number;
@@ -65,15 +68,32 @@ interface BottomNavigationProps {
 
 export const BottomNavigation = ({ activeTab, setActiveTab }: BottomNavigationProps) => {
     const navigation = useNavigation<NativeStackNavigationProp<any>>();
+    const [isDark, setIsDark] = React.useState(isDarkMode());
+    
+    React.useEffect(() => {
+        const unsubscribe = subscribeThemeChange((darkVal) => {
+            setIsDark(darkVal);
+        });
+        return unsubscribe;
+    }, []);
+
+    const theme = {
+        bg: isDark ? '#1E293B' : WHITE,
+        textActive: isDark ? WHITE : '#12183D',
+        textInactive: isDark ? '#94A3B8' : GRAY,
+        border: isDark ? '#334155' : BORDER,
+        iconAreaActive: isDark ? '#334155' : GRAY_LT,
+    };
+
     const navItems = [
-        { label: 'Search', icon: <HouseIcon /> },
-        { label: 'Bookings', icon: <WalletIcon /> },
-        { label: 'Inbox', icon: <InboxIcon /> },
-        { label: 'Profile', icon: <PersonIcon /> },
+        { label: 'Search', icon: <HouseIcon isDark={isDark} /> },
+        { label: 'Bookings', icon: <WalletIcon isDark={isDark} /> },
+        { label: 'Inbox', icon: <InboxIcon isDark={isDark} /> },
+        { label: 'Profile', icon: <PersonIcon isDark={isDark} /> },
     ];
 
     return (
-        <View style={s.bottomNav}>
+        <View style={[s.bottomNav, { backgroundColor: theme.bg, borderTopColor: theme.border }]}>
             {navItems.map((tab, i) => {
                 const active = activeTab === i;
                 return (
@@ -118,10 +138,10 @@ export const BottomNavigation = ({ activeTab, setActiveTab }: BottomNavigationPr
                         }}
                         activeOpacity={0.75}
                     >
-                        <View style={[s.navIconArea, active && s.navIconAreaActive]}>
+                        <View style={[s.navIconArea, { backgroundColor: 'transparent' }, active && { backgroundColor: theme.iconAreaActive }]}>
                             {React.cloneElement(tab.icon, { active })}
                         </View>
-                        <Text style={[s.navLabel, active && s.navLabelActive]}>
+                        <Text style={[s.navLabel, { color: theme.textInactive }, active && { color: theme.textActive, fontWeight: '700' }]}>
                             {tab.label}
                         </Text>
                     </TouchableOpacity>

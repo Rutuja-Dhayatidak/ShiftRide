@@ -7,8 +7,24 @@ const MOCK_LOCATIONS = {
   mumbai: { lat: 19.0760, lng: 72.8777 },
   nagpur: { lat: 21.1458, lng: 79.0882 },
   nashik: { lat: 20.0055, lng: 73.7898 },
+  nanded: { lat: 19.1383, lng: 77.3210 },
   aurangabad: { lat: 19.8762, lng: 75.3433 },
   chhatrapatisambhajinagar: { lat: 19.8762, lng: 75.3433 },
+  solapur: { lat: 17.6599, lng: 75.9064 },
+  kolhapur: { lat: 16.7050, lng: 74.2433 },
+  thane: { lat: 19.2183, lng: 72.9781 },
+  navimumbai: { lat: 19.0330, lng: 73.0297 },
+  amravati: { lat: 20.9374, lng: 77.7796 },
+  jalgaon: { lat: 21.0077, lng: 75.5626 },
+  satara: { lat: 17.6805, lng: 73.9918 },
+  sangli: { lat: 16.8524, lng: 74.5815 },
+  ahmednagar: { lat: 19.0948, lng: 74.7480 },
+  chandrapur: { lat: 19.9615, lng: 79.2961 },
+  delhi: { lat: 28.6139, lng: 77.2090 },
+  bangalore: { lat: 12.9716, lng: 77.5946 },
+  hyderabad: { lat: 17.3850, lng: 78.4867 },
+  chennai: { lat: 13.0827, lng: 80.2707 },
+  goa: { lat: 15.2993, lng: 74.1240 },
 };
 
 // Calculate approximate road distance using Haversine formula with a winding road factor
@@ -43,6 +59,24 @@ const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
   };
 };
 
+const callNominatimGeocoding = async (address) => {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+    const res = await axios.get(url, {
+      headers: {
+        'User-Agent': 'ShiftRideApp/1.0 (contact@shiftride.com)'
+      },
+      timeout: 5000
+    });
+    if (res.data && res.data.length > 0) {
+      return { lat: parseFloat(res.data[0].lat), lng: parseFloat(res.data[0].lon) };
+    }
+  } catch (err) {
+    console.error("Nominatim Fallback Geocoding Error:", err.message);
+  }
+  return null;
+};
+
 /**
  * 1. Convert address into Coordinates (Geocoding)
  */
@@ -54,6 +88,10 @@ exports.getCoordinates = async (address) => {
   const apiKey = rawKey.trim();
   
   if (!apiKey) {
+    // Try Nominatim first
+    const nominatimCoords = await callNominatimGeocoding(cleanAddr);
+    if (nominatimCoords) return nominatimCoords;
+    
     // Return mock coordinate if found
     for (const [key, value] of Object.entries(MOCK_LOCATIONS)) {
       if (lowerAddr.includes(key)) {
@@ -72,6 +110,10 @@ exports.getCoordinates = async (address) => {
       return { lat: loc.lat, lng: loc.lng };
     }
     
+    // Google failed, try Nominatim
+    const nominatimCoords = await callNominatimGeocoding(cleanAddr);
+    if (nominatimCoords) return nominatimCoords;
+    
     // API failed status, search mock
     for (const [key, value] of Object.entries(MOCK_LOCATIONS)) {
       if (lowerAddr.includes(key)) return value;
@@ -79,11 +121,38 @@ exports.getCoordinates = async (address) => {
     return MOCK_LOCATIONS.pune;
   } catch (err) {
     console.error("Geocoding API Error:", err.message);
+    
+    // Try Nominatim on error
+    const nominatimCoords = await callNominatimGeocoding(cleanAddr);
+    if (nominatimCoords) return nominatimCoords;
+    
     for (const [key, value] of Object.entries(MOCK_LOCATIONS)) {
       if (lowerAddr.includes(key)) return value;
     }
     return MOCK_LOCATIONS.pune;
   }
+};
+
+const callOSRMRoute = async (pCoords, dCoords) => {
+  try {
+    const url = `http://router.project-osrm.org/route/v1/driving/${pCoords.lng},${pCoords.lat};${dCoords.lng},${dCoords.lat}?overview=false`;
+    const res = await axios.get(url, { timeout: 6000 });
+    if (res.data && res.data.routes && res.data.routes.length > 0) {
+      const route = res.data.routes[0];
+      const distanceKm = Math.round(route.distance / 1000);
+      const durationSeconds = route.duration;
+      const hours = Math.floor(durationSeconds / 3600);
+      const minutes = Math.round((durationSeconds % 3600) / 60);
+      const durationStr = hours > 0 ? `${hours} hr ${minutes} min` : `${minutes} min`;
+      return {
+        distanceKm,
+        duration: durationStr
+      };
+    }
+  } catch (err) {
+    console.error("OSRM Route API Error:", err.message);
+  }
+  return null;
 };
 
 /**
@@ -97,7 +166,11 @@ exports.getDistanceAndDuration = async (pickup, drop) => {
   const dCoords = await exports.getCoordinates(drop);
   
   if (!apiKey) {
-    // If no key is set, use premium local Haversine calculations
+    // Try OSRM route for exact road distance
+    const osrmResult = await callOSRMRoute(pCoords, dCoords);
+    if (osrmResult) return osrmResult;
+    
+    // Final fallback
     return calculateHaversineDistance(pCoords.lat, pCoords.lng, dCoords.lat, dCoords.lng);
   }
   
@@ -123,10 +196,19 @@ exports.getDistanceAndDuration = async (pickup, drop) => {
       };
     }
     
-    // If Matrix API status is not OK, calculate via Haversine
+    // Try OSRM route on Google API status failure
+    const osrmResult = await callOSRMRoute(pCoords, dCoords);
+    if (osrmResult) return osrmResult;
+    
+    // Final fallback via Haversine
     return calculateHaversineDistance(pCoords.lat, pCoords.lng, dCoords.lat, dCoords.lng);
   } catch (err) {
     console.error("Distance Matrix API Error:", err.message);
+    
+    // Try OSRM route on error
+    const osrmResult = await callOSRMRoute(pCoords, dCoords);
+    if (osrmResult) return osrmResult;
+    
     return calculateHaversineDistance(pCoords.lat, pCoords.lng, dCoords.lat, dCoords.lng);
   }
 };

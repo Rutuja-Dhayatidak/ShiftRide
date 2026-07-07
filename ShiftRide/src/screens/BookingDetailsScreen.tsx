@@ -211,6 +211,7 @@ export default function BookingDetailsScreen() {
         drop_location: 'Pune',
         start_date: '2025-05-24T10:00:00.000Z',
         end_date: '2025-05-26T10:00:00.000Z',
+        created_at: '2025-05-22T08:00:00.000Z',
         rate_per_day: 5000,
         total_amount: 2496,
         status: 'BOOKED',
@@ -316,13 +317,6 @@ export default function BookingDetailsScreen() {
                     {/* Specs Row */}
                     <View style={s.specRow}>
                         <View style={s.specItem}>
-                            <Text style={s.specIcon}>👤</Text>
-                            <View>
-                                <Text style={s.specValLabel}>Passengers</Text>
-                                <Text style={s.specVal}>{displayBooking.car_id?.seats || 5}</Text>
-                            </View>
-                        </View>
-                        <View style={s.specItem}>
                             <Text style={s.specIcon}>📅</Text>
                             <View>
                                 <Text style={s.specValLabel}>Duration</Text>
@@ -340,7 +334,7 @@ export default function BookingDetailsScreen() {
                             <Text style={s.specIcon}>⏱️</Text>
                             <View>
                                 <Text style={s.specValLabel}>Booking Date</Text>
-                                <Text style={s.specVal}>{formatNiceDate(displayBooking.created_at)}</Text>
+                                <Text style={s.specVal}>{formatNiceDate(displayBooking.created_at || displayBooking.bookingDate)}</Text>
                             </View>
                         </View>
                     </View>
