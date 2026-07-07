@@ -1,6 +1,7 @@
 C:\carApp\ShiftRide\node_modules\@react-native-async-storage\async-storage\android\build\generated\source\codegen\jni\CMakeLists.txt
 C:\carApp\ShiftRide\node_modules\@react-native-community\datetimepicker\android\build\generated\source\codegen\jni\CMakeLists.txt
 C:\carApp\ShiftRide\node_modules\@react-native-community\geolocation\android\build\generated\source\codegen\jni\CMakeLists.txt
+C:\carApp\ShiftRide\node_modules\react-native-image-picker\android\build\generated\source\codegen\jni\CMakeLists.txt
 C:\carApp\ShiftRide\node_modules\react-native-razorpay\android\build\generated\source\codegen\jni\CMakeLists.txt
 C:\carApp\ShiftRide\node_modules\react-native-safe-area-context\android\src\main\jni\CMakeLists.txt
 C:\carApp\ShiftRide\node_modules\react-native-screens\android\src\main\jni\CMakeLists.txt

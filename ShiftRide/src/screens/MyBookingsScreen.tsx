@@ -159,11 +159,12 @@ export default function MyBookingsScreen() {
                         }
 
                         // Format dates
-                        const formatDateStr = (dateStr: string) => {
+                        const formatDateStr = (dateStr: string, timeStr?: string) => {
                             if (!dateStr) return '-';
                             const d = new Date(dateStr);
                             if (Number.isNaN(d.getTime())) return dateStr;
-                            return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                            const formattedDate = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                            return timeStr ? `${formattedDate}, ${timeStr}` : formattedDate;
                         };
 
                         return {
@@ -173,9 +174,9 @@ export default function MyBookingsScreen() {
                             pricePerDay: `₹${item.rate_per_day || 0}`,
                             status: uiStatus,
                             fromLoc: item.pickup_location || 'Pune',
-                            fromDate: formatDateStr(item.start_date),
+                            fromDate: formatDateStr(item.start_date, item.start_time),
                             toLoc: item.drop_location || 'Mumbai',
-                            toDate: formatDateStr(item.end_date),
+                            toDate: formatDateStr(item.end_date, item.start_time),
                             passengers: item.car_id?.seats || 5,
                             duration: item.distance_km ? `${item.distance_km} KM` : '2 Days',
                             distance: item.distance_km ? `${item.distance_km} KM` : '150 KM',
@@ -306,13 +307,6 @@ export default function MyBookingsScreen() {
 
                                     {/* Spec Row */}
                                     <View style={s.specRow}>
-                                        <View style={s.specItem}>
-                                            <Text style={s.specIcon}>👤</Text>
-                                            <View>
-                                                <Text style={[s.specValLabel, { color: theme.textSub }]}>Passengers</Text>
-                                                <Text style={[s.specVal, { color: theme.textMain }]}>{item.passengers}</Text>
-                                            </View>
-                                        </View>
                                         <View style={s.specItem}>
                                             <Text style={s.specIcon}>📅</Text>
                                             <View>

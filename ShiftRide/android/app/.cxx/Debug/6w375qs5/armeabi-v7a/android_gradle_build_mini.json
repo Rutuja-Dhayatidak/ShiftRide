@@ -3,6 +3,7 @@
     "C:\\carApp\\ShiftRide\\node_modules\\@react-native-async-storage\\async-storage\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRide\\node_modules\\@react-native-community\\datetimepicker\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRide\\node_modules\\@react-native-community\\geolocation\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
+    "C:\\carApp\\ShiftRide\\node_modules\\react-native-image-picker\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRide\\node_modules\\react-native-razorpay\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRide\\node_modules\\react-native-safe-area-context\\android\\src\\main\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRide\\node_modules\\react-native-screens\\android\\src\\main\\jni\\CMakeLists.txt",
@@ -32,6 +33,11 @@
         "C:\\Users\\ADMIN\\.gradle\\caches\\9.3.1\\transforms\\2b7c23aa4547eb79508e5d3aa3f2bc7a\\workspace\\transformed\\react-android-0.86.0-debug\\prefab\\modules\\jsi\\libs\\android.armeabi-v7a\\libjsi.so",
         "C:\\Users\\ADMIN\\.gradle\\caches\\9.3.1\\transforms\\2b7c23aa4547eb79508e5d3aa3f2bc7a\\workspace\\transformed\\react-android-0.86.0-debug\\prefab\\modules\\reactnative\\libs\\android.armeabi-v7a\\libreactnative.so"
       ]
+    },
+    "react_codegen_RNImagePickerSpec::@f66ee9a2efecfb28bee4": {
+      "artifactName": "react_codegen_RNImagePickerSpec",
+      "abi": "armeabi-v7a",
+      "runtimeFiles": []
     },
     "react_codegen_rnscreens::@25bcbd507e98d3a854ad": {
       "artifactName": "react_codegen_rnscreens",

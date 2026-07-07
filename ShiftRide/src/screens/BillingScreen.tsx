@@ -14,6 +14,7 @@ import {
     Alert,
     PermissionsAndroid,
     Platform,
+    Image,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -219,7 +220,7 @@ export default function BillingScreen() {
                 <View style={s.formCard}>
                     <Text style={s.fieldLabel}>Name</Text>
                     <View style={s.inputContainer}>
-                        <Text style={s.inputIcon}>👤</Text>
+                        <Image source={require('../assets/images/input_user.png')} style={s.inputIconImage} />
                         <TextInput
                             style={s.inputField}
                             placeholder="Enter name"
@@ -228,12 +229,12 @@ export default function BillingScreen() {
                             onChangeText={setName}
                         />
                     </View>
-
+ 
                     <Text style={s.fieldLabel}>Address</Text>
                     <View style={[s.inputContainer, { paddingRight: wp(8) }]}>
-                        <Text style={s.inputIcon}>📍</Text>
+                        <Image source={require('../assets/images/input_location.png')} style={s.inputIconImage} />
                         <TextInput
-                            style={[s.inputField, { flex: 1 }]}
+                            style={[s.inputField, { flex: 1, paddingLeft: wp(8) }]}
                             placeholder="Address"
                             placeholderTextColor="#94A3B8"
                             value={address}
@@ -250,10 +251,10 @@ export default function BillingScreen() {
                             </Text>
                         </TouchableOpacity>
                     </View>
-
+ 
                     <Text style={s.fieldLabel}>Email Address</Text>
                     <View style={s.inputContainer}>
-                        <Text style={s.inputIcon}>✉️</Text>
+                        <Image source={require('../assets/images/input_email.png')} style={s.inputIconImage} />
                         <TextInput
                             style={s.inputField}
                             placeholder="Enter email address"
@@ -264,10 +265,10 @@ export default function BillingScreen() {
                             onChangeText={setEmail}
                         />
                     </View>
-
+ 
                     <Text style={s.fieldLabel}>Phone Number</Text>
                     <View style={s.inputContainer}>
-                        <Text style={s.inputIcon}>📞</Text>
+                        <Image source={require('../assets/images/input_phone.png')} style={s.inputIconImage} />
                         <TextInput
                             style={s.inputField}
                             placeholder="Enter phone number"
@@ -277,7 +278,7 @@ export default function BillingScreen() {
                             onChangeText={setPhone}
                         />
                     </View>
-
+ 
                     <Text style={s.fieldLabel}>Country</Text>
                     <TouchableOpacity
                         style={s.dropdownBtn}
@@ -291,14 +292,14 @@ export default function BillingScreen() {
                         }}
                     >
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(8) }}>
-                            <Text style={s.inputIcon}>🌍</Text>
+                            <Image source={require('../assets/images/input_globe.png')} style={s.inputIconImage} />
                             <Text style={[s.dropdownTxt, !country && s.placeholderTxt]}>
                                 {country || 'Select country'}
                             </Text>
                         </View>
                         <Text style={s.chevron}>▾</Text>
                     </TouchableOpacity>
-
+ 
                     <Text style={s.fieldLabel}>Gender</Text>
                     <TouchableOpacity
                         style={s.dropdownBtn}
@@ -311,7 +312,7 @@ export default function BillingScreen() {
                         }}
                     >
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: wp(8) }}>
-                            <Text style={s.inputIcon}>⚧</Text>
+                            <Image source={require('../assets/images/input_gender.png')} style={s.inputIconImage} />
                             <Text style={[s.dropdownTxt, !gender && s.placeholderTxt]}>
                                 {gender || 'Select gender'}
                             </Text>
@@ -450,6 +451,12 @@ const s = StyleSheet.create({
     inputIcon: {
         fontSize: fs(15),
         color: GRAY,
+    },
+    inputIconImage: {
+        width: wp(16),
+        height: wp(16),
+        resizeMode: 'contain',
+        tintColor: '#5A6880',
     },
     inputField: {
         flex: 1,

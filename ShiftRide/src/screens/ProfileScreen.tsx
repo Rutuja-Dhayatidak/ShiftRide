@@ -10,13 +10,19 @@ import {
     PixelRatio,
     Switch,
     Animated,
+    TextInput,
+    Alert,
+    Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { BottomNavigation } from '../components/bottomnavigation';
 import { getSessionUser, setSession } from '../services/auth';
 import { isDarkMode, setDarkMode, subscribeThemeChange } from '../services/theme';
+import api from '../services/api';
+import { launchImageLibrary } from 'react-native-image-picker';
 
 const { width } = Dimensions.get('window');
 const BASE_W = 375;
@@ -131,6 +137,15 @@ const CustomLogoutIcon = ({ color }: { color: string }) => (
     </View>
 );
 
+const PRESET_AVATARS = [
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
+    'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150',
+    'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+];
+
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function ProfileScreen() {
@@ -164,14 +179,79 @@ export default function ProfileScreen() {
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const sessionUser = getSessionUser();
+    const [fullName, setFullName] = useState(sessionUser?.name || 'Andrew Ainsley');
+    const [email, setEmail] = useState(sessionUser?.email || 'andrew.ainsley@gmail.com');
+    const [phone, setPhone] = useState(sessionUser?.phone || '+1 111 467 378');
+    const [showPersonalInfo, setShowPersonalInfo] = useState(false);
+    const [showPaymentMethods, setShowPaymentMethods] = useState(false);
+    const [tripCount, setTripCount] = useState(0);
+    const [profileImage, setProfileImage] = useState<string | null>(null);
+    const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+    const [customUrl, setCustomUrl] = useState('');
+
+    useEffect(() => {
+        const loadSavedAvatar = async () => {
+            try {
+                const saved = await AsyncStorage.getItem('user_avatar');
+                if (saved) setProfileImage(saved);
+            } catch (e) {
+                console.log('Failed to load saved avatar:', e);
+            }
+        };
+        loadSavedAvatar();
+    }, []);
+
+    const saveAvatar = async (uri: string | null) => {
+        try {
+            setProfileImage(uri);
+            if (uri) {
+                await AsyncStorage.setItem('user_avatar', uri);
+            } else {
+                await AsyncStorage.removeItem('user_avatar');
+            }
+        } catch (e) {
+            console.log('Failed to save avatar:', e);
+        }
+    };
+
+    const selectImageFromGallery = () => {
+        launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, (response) => {
+            if (response.didCancel) {
+                console.log('User cancelled image picker');
+            } else if (response.errorMessage) {
+                console.log('ImagePicker Error: ', response.errorMessage);
+                Alert.alert('Error', response.errorMessage);
+            } else if (response.assets && response.assets.length > 0) {
+                const uri = response.assets[0].uri;
+                if (uri) {
+                    saveAvatar(uri);
+                    setShowAvatarPicker(false);
+                }
+            }
+        });
+    };
+
+    useEffect(() => {
+        const fetchTrips = async () => {
+            try {
+                const response = await api.get('/bookings/mybookings');
+                if (response && Array.isArray(response.data)) {
+                    setTripCount(response.data.length);
+                }
+            } catch (err) {
+                console.log("Failed to load user bookings count:", err);
+            }
+        };
+        fetchTrips();
+    }, []);
+
     const userProfile = {
-        name: sessionUser?.name || 'Andrew Ainsley',
-        email: sessionUser?.email || 'andrew.ainsley@gmail.com',
-        phone: sessionUser?.phone || '+1 111 467 378',
-        licenseNo: sessionUser?.licenseNo || 'DL-998246812',
-        rating: '4.9',
-        trips: 42,
-        wallet: '$248.50',
+        name: fullName,
+        email: email,
+        phone: phone,
+        status: 'Active',
+        trips: tripCount,
+        joined: '2026',
     };
 
     const isDark = darkModeEnabled;
@@ -214,12 +294,18 @@ export default function ProfileScreen() {
 
                     {/* Profile Card Inside Header */}
                     <View style={s.profileCard}>
-                        <View style={s.avatarContainer}>
+                        <TouchableOpacity style={s.avatarContainer} activeOpacity={0.8} onPress={() => setShowAvatarPicker(!showAvatarPicker)}>
                             <View style={s.avatar}>
-                                <Text style={s.avatarTxt}>{initials}</Text>
+                                {profileImage ? (
+                                    <Image source={{ uri: profileImage }} style={s.avatarImg} />
+                                ) : (
+                                    <Text style={s.avatarTxt}>{initials}</Text>
+                                )}
                             </View>
-                            <View style={[s.onlineBadge, isDark && { borderColor: '#1E293B' }]} />
-                        </View>
+                            <View style={[s.editBadge]}>
+                                <Text style={s.editBadgeTxt}>📷</Text>
+                            </View>
+                        </TouchableOpacity>
                         <View style={s.profileInfo}>
                             <Text style={s.profileName}>{userProfile.name}</Text>
                             <Text style={s.profileEmail}>{userProfile.email}</Text>
@@ -228,6 +314,54 @@ export default function ProfileScreen() {
                             </View>
                         </View>
                     </View>
+
+                    {/* Avatar Picker Panel */}
+                    {showAvatarPicker && (
+                        <View style={[s.pickerPanel, { backgroundColor: 'rgba(255,255,255,0.08)' }]}>
+                            <Text style={s.pickerTitle}>Choose Profile Photo</Text>
+                            <View style={s.presetRow}>
+                                {PRESET_AVATARS.map((url, i) => (
+                                    <TouchableOpacity 
+                                        key={i} 
+                                        style={[s.presetAvatarBtn, profileImage === url && s.presetAvatarBtnActive]} 
+                                        onPress={() => saveAvatar(url)}
+                                    >
+                                        <Image source={{ uri: url }} style={s.presetAvatarImg} />
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            <TouchableOpacity 
+                                style={s.gallerySelectBtn}
+                                activeOpacity={0.85}
+                                onPress={selectImageFromGallery}
+                            >
+                                <Text style={s.gallerySelectBtnTxt}>🖼️ Choose from Gallery</Text>
+                            </TouchableOpacity>
+
+                            <View style={s.customUrlRow}>
+                                <TextInput 
+                                    style={s.urlInput}
+                                    placeholder="Or paste photo URL..."
+                                    placeholderTextColor="rgba(255,255,255,0.5)"
+                                    value={customUrl}
+                                    onChangeText={setCustomUrl}
+                                    autoCapitalize="none"
+                                />
+                                <TouchableOpacity 
+                                    style={s.applyBtn}
+                                    onPress={() => {
+                                        if (customUrl.trim()) {
+                                            saveAvatar(customUrl.trim());
+                                            setCustomUrl('');
+                                        }
+                                    }}
+                                >
+                                    <Text style={s.applyBtnTxt}>Apply</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
                 </Animated.View>
 
                 {/* ── Floating Stats and Menu List (Animated) ── */}
@@ -237,15 +371,7 @@ export default function ProfileScreen() {
                     <View style={[s.statsContainer, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
                         <View style={s.statBox}>
                             <View style={s.statIconWrapper}>
-                                <CustomWalletIcon color={BLUE} />
-                            </View>
-                            <Text style={[s.statVal, { color: theme.textMain }]}>{userProfile.wallet}</Text>
-                            <Text style={s.statLabel}>Wallet</Text>
-                        </View>
-                        <View style={[s.statDivider, { backgroundColor: theme.border }]} />
-                        <View style={s.statBox}>
-                            <View style={s.statIconWrapper}>
-                                <CustomCarIcon color="#10B981" />
+                                <CustomCarIcon color={BLUE} />
                             </View>
                             <Text style={[s.statVal, { color: theme.textMain }]}>{userProfile.trips}</Text>
                             <Text style={s.statLabel}>Trips</Text>
@@ -253,10 +379,18 @@ export default function ProfileScreen() {
                         <View style={[s.statDivider, { backgroundColor: theme.border }]} />
                         <View style={s.statBox}>
                             <View style={s.statIconWrapper}>
-                                <CustomStarIcon color={GOLD} />
+                                <CustomShieldIcon color="#10B981" />
                             </View>
-                            <Text style={[s.statVal, { color: theme.textMain }]}>{userProfile.rating}</Text>
-                            <Text style={s.statLabel}>Rating</Text>
+                            <Text style={[s.statVal, { color: '#10B981' }]}>{userProfile.status}</Text>
+                            <Text style={s.statLabel}>Status</Text>
+                        </View>
+                        <View style={[s.statDivider, { backgroundColor: theme.border }]} />
+                        <View style={s.statBox}>
+                            <View style={s.statIconWrapper}>
+                                <CustomUserIcon color={GOLD} />
+                            </View>
+                            <Text style={[s.statVal, { color: theme.textMain }]}>{userProfile.joined}</Text>
+                            <Text style={s.statLabel}>Joined</Text>
                         </View>
                     </View>
 
@@ -267,7 +401,11 @@ export default function ProfileScreen() {
                             <View style={[s.titleBar, { backgroundColor: theme.border }]} />
                         </View>
 
-                        <TouchableOpacity style={[s.menuItem, { backgroundColor: theme.cardBg, borderColor: theme.border }]} activeOpacity={0.75}>
+                        <TouchableOpacity 
+                            style={[s.menuItem, { backgroundColor: theme.cardBg, borderColor: theme.border }]} 
+                            activeOpacity={0.75}
+                            onPress={() => setShowPersonalInfo(!showPersonalInfo)}
+                        >
                             <View style={s.menuLeft}>
                                 <View style={[s.menuIconBg, { backgroundColor: isDark ? '#334155' : '#EEF2FF' }]}>
                                     <CustomUserIcon color={isDark ? '#818CF8' : '#4F46E5'} />
@@ -277,10 +415,54 @@ export default function ProfileScreen() {
                                     <Text style={[s.menuSubtitle, { color: theme.textSub }]}>Manage your profile details</Text>
                                 </View>
                             </View>
-                            <Text style={s.chevron}>›</Text>
+                            <Text style={[s.chevron, { color: theme.textSub }]}>{showPersonalInfo ? '▼' : '›'}</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={[s.menuItem, { backgroundColor: theme.cardBg, borderColor: theme.border }]} activeOpacity={0.75}>
+                        {showPersonalInfo && (
+                            <View style={[s.personalInfoCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+                                <Text style={[s.infoLabel, { color: theme.textSub }]}>Full Name</Text>
+                                <TextInput 
+                                    style={[s.infoInput, { color: theme.textMain, borderColor: theme.border, backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}
+                                    value={fullName}
+                                    onChangeText={setFullName}
+                                />
+                                
+                                <Text style={[s.infoLabel, { color: theme.textSub, marginTop: wp(12) }]}>Email Address</Text>
+                                <TextInput 
+                                    style={[s.infoInput, { color: theme.textMain, borderColor: theme.border, backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                />
+                                
+                                <Text style={[s.infoLabel, { color: theme.textSub, marginTop: wp(12) }]}>Phone Number</Text>
+                                <TextInput 
+                                    style={[s.infoInput, { color: theme.textMain, borderColor: theme.border, backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}
+                                    value={phone}
+                                    onChangeText={setPhone}
+                                    keyboardType="phone-pad"
+                                />
+                                
+                                
+                                <TouchableOpacity 
+                                    style={s.saveBtn} 
+                                    activeOpacity={0.85}
+                                    onPress={() => {
+                                        Alert.alert('Success 🎉', 'Profile information updated successfully!');
+                                        setShowPersonalInfo(false);
+                                    }}
+                                >
+                                    <Text style={s.saveBtnTxt}>Save Changes</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        <TouchableOpacity 
+                            style={[s.menuItem, { backgroundColor: theme.cardBg, borderColor: theme.border }]} 
+                            activeOpacity={0.75}
+                            onPress={() => setShowPaymentMethods(!showPaymentMethods)}
+                        >
                             <View style={s.menuLeft}>
                                 <View style={[s.menuIconBg, { backgroundColor: isDark ? '#1E293B' : '#ECFDF5' }]}>
                                     <CustomWalletIcon color="#10B981" />
@@ -290,10 +472,45 @@ export default function ProfileScreen() {
                                     <Text style={[s.menuSubtitle, { color: theme.textSub }]}>Saved cards and payment accounts</Text>
                                 </View>
                             </View>
-                            <Text style={s.chevron}>›</Text>
+                            <Text style={[s.chevron, { color: theme.textSub }]}>{showPaymentMethods ? '▼' : '›'}</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={[s.menuItem, { backgroundColor: theme.cardBg, borderColor: theme.border }]} activeOpacity={0.75} onPress={() => navigation.navigate('Home')}>
+                        {showPaymentMethods && (
+                            <View style={[s.personalInfoCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+                                <Text style={[s.infoLabel, { color: theme.textSub }]}>Active Payment Gateway</Text>
+                                <View style={[s.paymentMethodRow, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: theme.border }]}>
+                                    <Text style={{ fontSize: fs(18) }}>💳</Text>
+                                    <View style={{ flex: 1, paddingLeft: wp(8) }}>
+                                        <Text style={[s.paymentTitle, { color: theme.textMain }]}>Razorpay / Cards</Text>
+                                        <Text style={{ fontSize: fs(10.5), color: theme.textSub }}>Primary Gateway Connected</Text>
+                                    </View>
+                                    <View style={s.activeBadge}>
+                                        <Text style={s.activeBadgeTxt}>ACTIVE</Text>
+                                    </View>
+                                </View>
+                                
+                                <Text style={[s.infoLabel, { color: theme.textSub, marginTop: wp(12) }]}>Saved Card</Text>
+                                <View style={[s.paymentMethodRow, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: theme.border }]}>
+                                    <Text style={{ fontSize: fs(18) }}>💳</Text>
+                                    <View style={{ flex: 1, paddingLeft: wp(8) }}>
+                                        <Text style={[s.paymentTitle, { color: theme.textMain }]}>Visa ending in 4242</Text>
+                                        <Text style={{ fontSize: fs(10.5), color: theme.textSub }}>Expires 12/28</Text>
+                                    </View>
+                                </View>
+                                
+                                <TouchableOpacity 
+                                    style={s.saveBtn} 
+                                    activeOpacity={0.85}
+                                    onPress={() => {
+                                        Alert.alert('Payment Methods', 'Razorpay integration is secure and configured for cards/UPI.');
+                                    }}
+                                >
+                                    <Text style={s.saveBtnTxt}>Configure Razorpay</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        <TouchableOpacity style={[s.menuItem, { backgroundColor: theme.cardBg, borderColor: theme.border }]} activeOpacity={0.75} onPress={() => navigation.navigate('MyBookings')}>
                             <View style={s.menuLeft}>
                                 <View style={[s.menuIconBg, { backgroundColor: isDark ? '#1E293B' : '#EFF6FF' }]}>
                                     <CustomCarIcon color={BLUE} />
@@ -678,5 +895,173 @@ const s = StyleSheet.create({
         fontSize: fs(15),
         fontWeight: '800',
         color: RED,
+    },
+    personalInfoCard: {
+        padding: wp(16),
+        borderWidth: 1.5,
+        borderRadius: wp(16),
+        marginBottom: wp(14),
+        gap: wp(4),
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: wp(2) },
+        shadowOpacity: 0.02,
+        shadowRadius: wp(6),
+        elevation: 1,
+    },
+    infoLabel: {
+        fontSize: fs(11),
+        fontWeight: '800',
+        color: GRAY,
+        marginTop: wp(4),
+    },
+    infoInput: {
+        borderWidth: 1.5,
+        borderRadius: wp(10),
+        paddingVertical: wp(8),
+        paddingHorizontal: wp(12),
+        fontSize: fs(13),
+        fontWeight: '700',
+        marginTop: wp(4),
+    },
+    saveBtn: {
+        backgroundColor: BLUE,
+        paddingVertical: wp(12),
+        borderRadius: wp(12),
+        alignItems: 'center',
+        marginTop: wp(14),
+        shadowColor: BLUE,
+        shadowOffset: { width: 0, height: wp(4) },
+        shadowOpacity: 0.2,
+        shadowRadius: wp(8),
+        elevation: 3,
+    },
+    saveBtnTxt: {
+        color: WHITE,
+        fontSize: fs(13),
+        fontWeight: '800',
+    },
+    paymentMethodRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderRadius: wp(12),
+        paddingHorizontal: wp(12),
+        paddingVertical: wp(10),
+        marginTop: wp(6),
+    },
+    paymentTitle: {
+        fontSize: fs(13),
+        fontWeight: '800',
+    },
+    activeBadge: {
+        backgroundColor: '#ECFDF5',
+        paddingHorizontal: wp(8),
+        paddingVertical: wp(4),
+        borderRadius: wp(6),
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
+    },
+    activeBadgeTxt: {
+        color: '#059669',
+        fontSize: fs(9),
+        fontWeight: '800',
+    },
+    avatarImg: {
+        width: wp(74),
+        height: wp(74),
+        borderRadius: wp(37),
+    },
+    editBadge: {
+        position: 'absolute',
+        right: -wp(2),
+        bottom: -wp(2),
+        width: wp(28),
+        height: wp(28),
+        borderRadius: wp(14),
+        backgroundColor: BLUE,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: WHITE,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: wp(2) },
+        shadowOpacity: 0.15,
+        shadowRadius: wp(4),
+        elevation: 3,
+    },
+    editBadgeTxt: {
+        fontSize: fs(12),
+    },
+    pickerPanel: {
+        marginTop: wp(16),
+        padding: wp(14),
+        borderRadius: wp(16),
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+    },
+    pickerTitle: {
+        fontSize: fs(12),
+        fontWeight: '800',
+        color: WHITE,
+        marginBottom: wp(10),
+    },
+    presetRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: wp(10),
+        marginBottom: wp(12),
+    },
+    presetAvatarBtn: {
+        width: wp(42),
+        height: wp(42),
+        borderRadius: wp(21),
+        borderWidth: 2,
+        borderColor: 'transparent',
+        overflow: 'hidden',
+    },
+    presetAvatarBtnActive: {
+        borderColor: BLUE,
+    },
+    presetAvatarImg: {
+        width: '100%',
+        height: '100%',
+    },
+    customUrlRow: {
+        flexDirection: 'row',
+        gap: wp(8),
+    },
+    urlInput: {
+        flex: 1,
+        height: wp(38),
+        backgroundColor: 'rgba(255,255,255,0.06)',
+        borderRadius: wp(8),
+        paddingHorizontal: wp(10),
+        color: WHITE,
+        fontSize: fs(12),
+    },
+    applyBtn: {
+        backgroundColor: BLUE,
+        paddingHorizontal: wp(14),
+        borderRadius: wp(8),
+        justifyContent: 'center',
+    },
+    applyBtnTxt: {
+        color: WHITE,
+        fontSize: fs(12),
+        fontWeight: '800',
+    },
+    gallerySelectBtn: {
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.25)',
+        borderRadius: wp(10),
+        paddingVertical: wp(10),
+        alignItems: 'center',
+        marginBottom: wp(12),
+    },
+    gallerySelectBtnTxt: {
+        color: WHITE,
+        fontSize: fs(12),
+        fontWeight: '800',
     },
 });

@@ -663,39 +663,7 @@ export default function CarResultsScreen() {
                 )}
                 </View>
 
-                {/* ── Bottom Trust/Security Badges ── */}
-                <View style={s.trustSection}>
-                    <View style={s.trustItem}>
-                        <View style={s.trustIconBg}>
-                            <Text style={s.trustIcon}>🛡️</Text>
-                        </View>
-                        <Text style={s.trustTitle}>100% Secure</Text>
-                        <Text style={s.trustDesc}>Payments</Text>
-                    </View>
-                    <View style={s.trustItem}>
-                        <View style={s.trustIconBg}>
-                            <Text style={s.trustIcon}>📞</Text>
-                        </View>
-                        <Text style={s.trustTitle}>24/7</Text>
-                        <Text style={s.trustDesc}>Support</Text>
-                    </View>
-                    <View style={s.trustItem}>
-                        <View style={s.trustIconBg}>
-                            <Text style={s.trustIcon}>🔄</Text>
-                        </View>
-                        <Text style={s.trustTitle}>Free Cancel</Text>
-                        <Text style={s.trustDesc}>Up to 24 hrs</Text>
-                    </View>
-                    <View style={s.trustItem}>
-                        <View style={s.trustIconBg}>
-                            <Text style={s.trustIcon}>🏆</Text>
-                        </View>
-                        <Text style={s.trustTitle}>Best Price</Text>
-                        <Text style={s.trustDesc}>Guarantee</Text>
-                    </View>
-                </View>
 
-                <View style={{ height: wp(80) }} />
             </Animated.ScrollView>
 
             {/* Bottom Nav bar fixed at bottom */}

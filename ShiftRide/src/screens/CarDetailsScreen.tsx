@@ -323,11 +323,7 @@ export default function CarDetailsScreen() {
                 {/* ── Curved Car Display (Animated) ── */}
                 <Animated.View style={{ opacity: carOpacity, transform: [{ scale: carScale }] }}>
                     <View style={s.carDisplayContainer}>
-                        <View style={s.orangeArc} />
                         <Image source={selectedImage ?? car.image} style={s.carImg} resizeMode="cover" />
-                        <View style={s.badge360}>
-                            <Text style={s.text360}>360</Text>
-                        </View>
                     </View>
                 </Animated.View>
 

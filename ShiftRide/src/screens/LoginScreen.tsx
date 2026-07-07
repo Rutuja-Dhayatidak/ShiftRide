@@ -18,6 +18,7 @@ import {
     Alert,
     ScrollView,
     ActivityIndicator,
+    Image,
 } from 'react-native';
 import { loginUser, verifyOtp } from '../services/auth';
 import { InputField } from '../components/InputField';
@@ -300,14 +301,14 @@ const LoginScreen = () => {
                                 {/* Social Buttons */}
                                 <Animated.View style={[styles.socialRow, { opacity: socialFade }]}>
                                     <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8}>
-                                        <Text style={styles.socialIcon}>G</Text>
+                                        <Image source={require('../assets/images/google_logo.png')} style={styles.socialLogo} />
                                         <Text style={styles.socialBtnText}>Google</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.socialBtn, styles.socialBtnDark]}
                                         activeOpacity={0.8}
                                     >
-                                        <Text style={[styles.socialIcon, { color: WHITE }]}>🍎</Text>
+                                        <Image source={require('../assets/images/apple_logo.png')} style={styles.socialLogo} />
                                         <Text style={[styles.socialBtnText, { color: WHITE }]}>
                                             Apple
                                         </Text>
@@ -552,6 +553,11 @@ const styles = StyleSheet.create({
     socialBtnDark: {
         backgroundColor: NAVY,
         borderColor: NAVY,
+    },
+    socialLogo: {
+        width: wp(18),
+        height: wp(18),
+        resizeMode: 'contain',
     },
     socialIcon: {
         fontSize: fs(16),

@@ -266,45 +266,12 @@ exports.invoicePdf = async (req, res) => {
     y = y + customerCardH + 15;
 
     // ================== CARD 3: CAR ==================
-    const carCardH = 190;
-    innerY = card(x, y, contentW, carCardH, "Car");
+    const carCardH = 90;
+    innerY = card(x, y, contentW, carCardH, "Car Details");
 
-    row(leftX, innerY + 0, rightW, "Name", safe(b.car_name));
+    row(leftX, innerY + 0, rightW, "Car Name", safe(b.car_name));
     row(leftX, innerY + 18, rightW, "Brand", safe(b.car_brand));
     row(leftX, innerY + 36, rightW, "Price/Day", formatINR(b.car_price_per_day));
-
-    // ✅ Car image box
-    const imgBoxX = leftX;
-    const imgBoxY = innerY + 60;
-    const imgW = 130;
-    const imgH = 100;
-
-    doc
-      .roundedRect(imgBoxX, imgBoxY, imgW, imgH, 8)
-      .lineWidth(1)
-      .strokeColor("#E5E7EB")
-      .stroke();
-
-    try {
-      // ✅ this supports absolute windows path OR URL
-      const imgSource = await loadImageForPdf(b.car_image);
-
-      // console.log("CAR IMAGE VALUE:", b.car_image);
-      // console.log("IMG SOURCE:", Buffer.isBuffer(imgSource) ? "BUFFER" : imgSource);
-
-      if (imgSource) {
-        doc.image(imgSource, imgBoxX + 6, imgBoxY + 6, {
-          fit: [imgW - 12, imgH - 12],
-          align: "center",
-          valign: "center",
-        });
-      } else {
-        doc.fontSize(9).fillColor("#6B7280").text("No Image", imgBoxX + 45, imgBoxY + 45);
-      }
-    } catch (e) {
-      console.error("Image render error:", e);
-      doc.fontSize(9).fillColor("#6B7280").text("Image not loaded", imgBoxX + 20, imgBoxY + 45);
-    }
 
     y = y + carCardH + 20;
 

@@ -3,6 +3,7 @@
     "C:\\carApp\\ShiftRide\\node_modules\\@react-native-async-storage\\async-storage\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRide\\node_modules\\@react-native-community\\datetimepicker\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRide\\node_modules\\@react-native-community\\geolocation\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
+    "C:\\carApp\\ShiftRide\\node_modules\\react-native-image-picker\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRide\\node_modules\\react-native-razorpay\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRide\\node_modules\\react-native-safe-area-context\\android\\src\\main\\jni\\CMakeLists.txt",
     "C:\\carApp\\ShiftRide\\node_modules\\react-native-screens\\android\\src\\main\\jni\\CMakeLists.txt",
@@ -50,6 +51,11 @@
       "toolchain": "toolchain",
       "abi": "arm64-v8a",
       "artifactName": "react_codegen_RNDateTimePickerCGen"
+    },
+    "react_codegen_RNImagePickerSpec::@f66ee9a2efecfb28bee4": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "react_codegen_RNImagePickerSpec"
     },
     "react_codegen_RNRazorpayCheckoutSpec::@ba471378ee2eecf9e7b3": {
       "toolchain": "toolchain",

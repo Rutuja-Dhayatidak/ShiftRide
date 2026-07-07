@@ -18,6 +18,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import api, { getCarImageUrl } from '../services/api';
+import { getSessionToken } from '../services/auth';
 
 const { width } = Dimensions.get('window');
 const BASE_W = 375;
@@ -276,6 +277,27 @@ export default function BookingDetailsScreen() {
     const totalDaysAmountText = displayBooking.billing_type === 'PER_KM'
         ? `₹${displayBooking.total_amount}`
         : `₹${displayBooking.baseFare || displayBooking.total_amount}`;
+
+    const handleDownloadInvoice = () => {
+        try {
+            const token = getSessionToken();
+            const id = displayBooking._id || displayBooking.id;
+            let invoiceUrl = `${api.defaults.baseURL}/bookings/invoice/${id}?token=${token}`;
+            
+            // Replace localhost or 127.0.0.1 with host computer's local IP (192.168.1.45) 
+            // so the phone's browser can route to the development server.
+            if (invoiceUrl.includes('localhost')) {
+                invoiceUrl = invoiceUrl.replace('localhost', '192.168.1.45');
+            } else if (invoiceUrl.includes('127.0.0.1')) {
+                invoiceUrl = invoiceUrl.replace('127.0.0.1', '192.168.1.45');
+            }
+            
+            Linking.openURL(invoiceUrl);
+        } catch (err) {
+            console.error('Failed to open invoice:', err);
+            Alert.alert('Error', 'Unable to download invoice at the moment.');
+        }
+    };
 
     return (
         <View style={s.screen}>
@@ -578,7 +600,7 @@ export default function BookingDetailsScreen() {
 
             {/* Bottom Buttons */}
             <View style={s.bottomContainer}>
-                <TouchableOpacity style={s.downloadBtn}>
+                <TouchableOpacity style={s.downloadBtn} onPress={handleDownloadInvoice}>
                     <Text style={s.downloadBtnTxt}>📥 Download Invoice</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.supportBtn}>

@@ -9,6 +9,7 @@ import {
     PixelRatio,
     Dimensions,
     KeyboardTypeOptions,
+    Image,
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
@@ -23,6 +24,25 @@ const INPUT_BG = '#F0F4FF';
 const WHITE    = '#FFFFFF';
 const RED      = '#FF3B30';
 const BORDER   = '#E0E8FF';
+
+const getIconSource = (iconName: string) => {
+    switch (iconName) {
+        case '✉️':
+            return require('../assets/images/input_email.png');
+        case '🔒':
+            return require('../assets/images/input_lock.png');
+        case '👤':
+            return require('../assets/images/input_user.png');
+        case '📱':
+            return require('../assets/images/input_phone.png');
+        case '🔑':
+            return require('../assets/images/input_key.png');
+        case '📍':
+            return require('../assets/images/input_location.png');
+        default:
+            return null;
+    }
+};
 
 interface InputFieldProps {
     label: string;
@@ -70,7 +90,11 @@ export const InputField = ({
                     !!error && styles.inputBoxError,
                 ]}
             >
-                <Text style={styles.inputIcon}>{icon}</Text>
+                {getIconSource(icon) ? (
+                    <Image source={getIconSource(icon)} style={styles.inputIconImage} />
+                ) : (
+                    <Text style={styles.inputIcon}>{icon}</Text>
+                )}
                 <TextInput
                     style={styles.input}
                     placeholder={placeholder}
@@ -85,9 +109,14 @@ export const InputField = ({
                 />
                 {showToggle && (
                     <TouchableOpacity onPress={onToggle} style={styles.eyeBtn}>
-                        <Text style={styles.eyeIcon}>
-                            {secureTextEntry ? '👁️' : '🙈'}
-                        </Text>
+                        <Image 
+                            source={
+                                secureTextEntry 
+                                    ? require('../assets/images/eye_invisible.png') 
+                                    : require('../assets/images/eye_visible.png')
+                            } 
+                            style={styles.eyeIconImage} 
+                        />
                     </TouchableOpacity>
                 )}
             </View>
@@ -123,6 +152,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF5F5',
     },
     inputIcon: { fontSize: fs(16) },
+    inputIconImage: {
+        width: wp(18),
+        height: wp(18),
+        resizeMode: 'contain',
+        tintColor: '#5A6880',
+    },
     input: {
         flex: 1,
         fontSize: fs(14),
@@ -131,6 +166,12 @@ const styles = StyleSheet.create({
     },
     eyeBtn:  { padding: wp(4) },
     eyeIcon: { fontSize: fs(16) },
+    eyeIconImage: {
+        width: wp(20),
+        height: wp(20),
+        resizeMode: 'contain',
+        tintColor: '#5A6880',
+    },
     errorText: {
         fontSize: fs(12),
         color: RED,
